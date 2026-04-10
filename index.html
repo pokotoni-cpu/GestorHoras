@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Horas y Vacaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F5F3EE;--surface:#FFFFFF;--surface2:#F9F7F3;--surface3:#F0EDE6;
+  --border:#E4E0D8;--border2:#CCC8BF;
+  --txt:#1A1917;--txt2:#6B6860;--txt3:#A09D98;
+  --accent:#1A1917;
+  --green:#2D6A4F;--green-bg:#E8F5EE;--green-border:#B7DEC9;
+  --blue:#1A4B8C;--blue-bg:#E8EFFA;--blue-border:#B3CAEA;
+  --amber:#9A5B00;--amber-bg:#FEF3E2;--amber-border:#F5D99A;
+  --red:#8B1D1D;--red-bg:#FDECEA;--red-border:#F5B8B8;
+  --purple:#4A2D82;--purple-bg:#F0EAFB;--purple-border:#C9B8EE;
+  --teal:#1A6060;--teal-bg:#E6F4F4;--teal-border:#9EC9C9;
+  --r:10px;--r-lg:14px;--r-xl:18px;
+  --sh:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --sh-md:0 4px 16px rgba(0,0,0,0.08),0 2px 6px rgba(0,0,0,0.04);
+  --sh-lg:0 12px 40px rgba(0,0,0,0.13),0 4px 12px rgba(0,0,0,0.07);
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* ── LOADING SCREEN ── */
+#loading-screen{position:fixed;inset:0;background:linear-gradient(145deg,#1A1917,#2C2A26);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff}
+#loading-screen .spin{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px}
+#loading-screen p{font-size:13px;opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── AUTH ── */
+#auth-screen{min-height:100vh;display:none;align-items:center;justify-content:center;background:linear-gradient(145deg,#1A1917 0%,#2C2A26 55%,#3A3730 100%);padding:1.5rem}
+.auth-card{background:var(--surface);border-radius:var(--r-xl);padding:2.5rem;width:min(430px,100%);box-shadow:var(--sh-lg)}
+.auth-logo{font-size:22px;font-weight:700;letter-spacing:-0.5px;margin-bottom:3px}
+.auth-logo span{color:var(--txt3);font-weight:400}
+.auth-sub{font-size:13px;color:var(--txt2);margin-bottom:2rem}
+.auth-tabs{display:flex;background:var(--surface3);border-radius:var(--r);padding:3px;margin-bottom:1.5rem;border:1px solid var(--border)}
+.auth-tab{flex:1;padding:7px;text-align:center;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;color:var(--txt2);transition:all .15s;border:none;background:transparent;font-family:inherit}
+.auth-tab.active{background:var(--accent);color:#fff}
+.pending-notice{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--r);padding:14px 16px;font-size:13px;color:var(--amber);line-height:1.6;margin-top:1rem;display:none}
+.pending-notice strong{display:block;margin-bottom:4px}
+
+/* ── TOPBAR ── */
+#main-app{display:none;min-height:100vh}
+.topbar{background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:56px;position:sticky;top:0;z-index:50}
+.topbar-brand{font-size:15px;font-weight:600;letter-spacing:-0.3px}
+.topbar-brand span{opacity:.45;font-weight:400}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.user-pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.2);padding:5px 12px 5px 6px;border-radius:20px;font-size:13px}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.role-badge-top{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.05em}
+.role-super{background:#F5D99A;color:#7A4500}.role-admin{background:#B3CAEA;color:#0D3060}.role-tech{background:rgba(255,255,255,.18);color:#fff}
+.btn-logout{background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.8);padding:5px 12px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-logout:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* ── LAYOUT ── */
+.app-layout{display:flex;min-height:calc(100vh - 56px)}
+.sidebar{width:224px;background:var(--surface);border-right:1px solid var(--border);padding:1.25rem 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+@media(max-width:720px){.sidebar{display:none}.mobile-tabs{display:flex!important}}
+.mobile-tabs{display:none;overflow-x:auto;background:var(--surface);border-bottom:1px solid var(--border);padding:0 .75rem;gap:2px;scrollbar-width:none}
+.mobile-tabs::-webkit-scrollbar{display:none}
+.mob-tab{padding:12px 10px;font-size:12px;font-weight:500;color:var(--txt2);white-space:nowrap;border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:inherit}
+.mob-tab.active{color:var(--txt);border-color:var(--accent)}
+.nav-group{padding:0 10px;margin-bottom:2px}
+.nav-label{font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;padding:10px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);font-size:13px;font-weight:500;color:var(--txt2);cursor:pointer;transition:all .12s;border:none;background:transparent;width:100%;text-align:left;font-family:inherit}
+.nav-item:hover{background:var(--surface3);color:var(--txt)}
+.nav-item.active{background:var(--accent);color:#fff}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.main-content{flex:1;padding:1.5rem;overflow-x:hidden}
+@media(max-width:720px){.main-content{padding:1rem}}
+
+/* ── SHARED UI ── */
+.page{display:none}.page.active{display:block}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.5px;margin-bottom:3px}
+.page-sub{font-size:13px;color:var(--txt2);margin-bottom:1.5rem}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+@media(max-width:840px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;box-shadow:var(--sh)}
+.card-g{border-top:3px solid var(--green)}.card-b{border-top:3px solid var(--blue)}
+.card-a{border-top:3px solid var(--amber)}.card-p{border-top:3px solid var(--purple)}
+.card-label{font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.card-val{font-size:26px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.card-val span{font-size:14px;font-weight:400;color:var(--txt3)}
+.card-sub{font-size:11px;color:var(--txt3);margin-top:5px}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.25rem;margin-bottom:1rem;box-shadow:var(--sh)}
+.section-title{font-size:14px;font-weight:600;margin-bottom:1rem}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:580px){.grid-2{grid-template-columns:1fr}}
+table{width:100%;font-size:13px;border-collapse:collapse}
+th{text-align:left;font-size:10px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface2)}
+td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--txt);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.tbl-wrap{overflow-x:auto}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;line-height:1.4;letter-spacing:.02em;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.b-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.b-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.b-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.b-purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+.b-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.b-gray{background:var(--surface3);color:var(--txt2);border:1px solid var(--border)}
+.b-orange{background:#FEF0E6;color:#8A3A00;border:1px solid #F5C99A}
+.btn{padding:8px 16px;font-size:13px;font-weight:500;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--txt);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn:hover{background:var(--surface3)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}.btn-primary:hover{background:#333}
+.btn-sm{padding:5px 10px;font-size:11px;border-radius:7px}
+.btn-danger{color:var(--red);border-color:var(--red-border)}.btn-danger:hover{background:var(--red-bg)}
+.btn-success{color:var(--green);border-color:var(--green-border)}.btn-success:hover{background:var(--green-bg)}
+.prog-wrap{margin-bottom:1rem}
+.prog-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;color:var(--txt2)}
+.prog-label strong{color:var(--txt);font-weight:600}
+.progress-bar{height:8px;background:var(--surface3);border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.progress-fill{height:100%;border-radius:6px;transition:width .4s ease}
+.info-box{padding:12px 14px;border-radius:var(--r);font-size:13px;line-height:1.6;margin-bottom:1rem}
+.ib-blue{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue)}
+.ib-amber{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber)}
+.ib-green{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+.ib-red{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)}
+input,select,textarea{font-size:13px;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);color:var(--txt);outline:none;font-family:inherit;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,25,23,.07)}
+.form-row{margin-bottom:14px}
+.form-row label{display:block;font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.form-row input,.form-row select,.form-row textarea{width:100%}
+textarea{resize:vertical}
+
+/* ── CLOCK ── */
+.clock-panel{background:linear-gradient(145deg,#1A1917,#2D2B28);border-radius:var(--r-xl);padding:2rem;margin-bottom:1.25rem;color:#fff;position:relative;overflow:hidden}
+.clock-panel::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.025);pointer-events:none}
+.clock-time{font-size:52px;font-weight:700;letter-spacing:-2px;font-family:'DM Mono',monospace;margin-bottom:4px;position:relative}
+.clock-date-txt{font-size:13px;opacity:.45;margin-bottom:1.75rem;position:relative}
+.clock-status{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:var(--r);padding:11px 14px;margin-bottom:1.1rem;font-size:13px;color:rgba(255,255,255,.75);position:relative}
+.clock-status strong{color:#fff}
+.s-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px}
+.s-dot.in{background:#4CAF50;animation:blink 2s infinite}
+.s-dot.travel{background:#FF9800;animation:blink 2s infinite}
+.s-dot.out{background:rgba(255,255,255,.3)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.clock-btns{display:flex;gap:10px;flex-wrap:wrap;position:relative}
+.cbtn{padding:11px 22px;font-size:13px;font-weight:600;border-radius:var(--r);cursor:pointer;font-family:inherit;border:none;display:flex;align-items:center;gap:7px;transition:all .15s}
+.cbtn-in{background:#4CAF50;color:#fff}.cbtn-in:hover{background:#43A047}
+.cbtn-out{background:#F44336;color:#fff}.cbtn-out:hover{background:#E53935}
+.cbtn-travel{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255,255,255,.24)}.cbtn-travel:hover{background:rgba(255,255,255,.19)}
+
+/* ── CALENDAR ── */
+.cal-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cal-nb{background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--txt);font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .1s;line-height:1}
+.cal-nb:hover{background:var(--surface3)}
+.cal-title-txt{font-size:16px;font-weight:600;flex:1;text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-head{text-align:center;font-size:10px;font-weight:700;color:var(--txt3);padding:6px 0;text-transform:uppercase;letter-spacing:.06em}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:all .12s;color:var(--txt);position:relative;gap:2px;user-select:none}
+.cal-day:hover:not(.empty){background:var(--surface2);border-color:var(--border)}
+.cal-day.empty{cursor:default}.cal-day.we{color:var(--txt3)}
+.cal-day.vn{background:#C8EDD8;color:#1A5C35;border-color:#6DB98A;font-weight:700}
+.cal-day.ve{background:#C2D9F7;color:#0D3570;border-color:#5A9BE0;font-weight:700}
+.cal-day.vp{background:#FAD97A;color:#6B3E00;border-color:#E0A820;font-weight:700}
+.cal-day.today{border-color:var(--accent)!important;border-width:2px;font-weight:700}
+.cal-day.sel{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border);font-weight:600}
+.cal-day.hh{background:var(--surface2);border-color:var(--border)}
+.cal-day.ht{background:var(--amber-bg);border-color:var(--amber-border)}
+.dot-ind{width:5px;height:5px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.cal-day.hex .dot-ind{background:var(--blue)}
+.cal-day.vn .dot-ind,.cal-day.ve .dot-ind,.cal-day.vp .dot-ind{display:none}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)}
+.leg-sq{width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.1)}
+
+/* ── EMP CARDS ── */
+.emp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.1rem 1.25rem;display:flex;align-items:center;gap:14px;margin-bottom:10px;box-shadow:var(--sh);transition:all .15s}
+.emp-card:hover{border-color:var(--border2);box-shadow:var(--sh-md)}
+.emp-av{width:44px;height:44px;border-radius:50%;background:var(--surface3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--txt2);flex-shrink:0}
+.emp-info{flex:1;min-width:0}
+.emp-name{font-size:14px;font-weight:600}
+.emp-meta{font-size:11px;color:var(--txt3);margin-top:2px}
+.emp-stats{display:flex;gap:12px;margin-top:7px;flex-wrap:wrap}
+.emp-stat{font-size:11px;color:var(--txt2)}.emp-stat strong{color:var(--txt);font-weight:600}
+.emp-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ── VAC REQUESTS ── */
+.vac-req{background:var(--surface);border:1px solid var(--amber-border);border-radius:var(--r);padding:1rem 1.1rem;margin-bottom:8px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;box-shadow:var(--sh);flex-wrap:wrap}
+.vac-req-info{flex:1;min-width:180px}
+.vac-req-name{font-size:14px;font-weight:600;margin-bottom:4px}
+.vac-req-det{font-size:12px;color:var(--txt2)}
+.vac-req-acts{display:flex;gap:6px;align-items:center;flex-shrink:0}
+
+/* ── PENDING USERS ── */
+.pending-user{background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--r);padding:.9rem 1.1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pu-info{flex:1;min-width:160px}
+.pu-name{font-size:14px;font-weight:600}
+.pu-meta{font-size:11px;color:var(--txt2);margin-top:2px}
+
+/* ── MODALS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(2px)}
+.modal{background:var(--surface);border-radius:var(--r-xl);border:1px solid var(--border);padding:1.75rem;width:min(500px,94vw);max-height:92vh;overflow-y:auto;box-shadow:var(--sh-lg)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:1.25rem;padding-bottom:12px;border-bottom:1px solid var(--border);letter-spacing:-.3px}
+.h-calc{font-size:13px;color:var(--txt2);margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)}
+.type-toggle{display:flex;background:var(--surface3);border-radius:var(--r);padding:3px;margin-bottom:1.25rem;border:1px solid var(--border)}
+.type-btn{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:700;border-radius:8px;cursor:pointer;color:var(--txt2);transition:all .15s;border:none;background:transparent;font-family:inherit;text-transform:uppercase;letter-spacing:.05em}
+.type-btn.active{background:var(--accent);color:#fff}
+.travel-fields{border-top:1px solid var(--border);padding-top:1rem;margin-top:4px}
+textarea.csv-ta{width:100%;font-family:'DM Mono',monospace;font-size:12px;padding:10px;height:110px;line-height:1.5}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:1000;color:#fff;padding:12px 18px;border-radius:var(--r);font-size:13px;font-weight:500;box-shadow:var(--sh-lg);animation:slideUp .22s ease;max-width:340px}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--txt3)}
+.empty-state .icon{font-size:2.2rem;margin-bottom:10px;opacity:.4}
+.empty-state p{font-size:13px}
+.cbtn-vac{padding:9px 16px;font-size:13px;font-weight:500;border-radius:var(--r);cursor:pointer;font-family:inherit;border:2px solid var(--border2);background:var(--surface);color:var(--txt2);transition:all .15s}
+.cbtn-vac:hover{border-color:var(--border2);background:var(--surface3)}
+.cbtn-vac.active{border-color:var(--accent);background:var(--accent);color:#fff}
+.cal-day.we-blocked{color:var(--border2)!important;cursor:not-allowed!important;opacity:.45}
+.hidden{display:none}
+.flex{display:flex}.gap-8{gap:8px}.mt-8{margin-top:8px}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spin"></div>
+  <p>Conectando…</p>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen">
+<div class="auth-card">
+  <div class="auth-logo">Gestor <span>horas &amp; vacaciones</span></div>
+  <div class="auth-sub">Identifícate para continuar</div>
+  <div class="auth-tabs">
+    <button class="auth-tab active" onclick="switchAuthTab('login')">Iniciar sesión</button>
+    <button class="auth-tab" onclick="switchAuthTab('register')">Registrarse</button>
+  </div>
+  <div id="auth-login">
+    <div class="form-row"><label>Usuario</label><input type="text" id="l-user" placeholder="nombre de usuario" autocomplete="username"></div>
+    <div class="form-row"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"></div>
+    <div id="l-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%" id="btn-login" onclick="doLogin()">Entrar</button>
+    <p style="font-size:11px;color:var(--txt3);margin-top:14px;text-align:center">¿Sin cuenta? Regístrate — el admin la activará.</p>
+  </div>
+  <div id="auth-register" class="hidden">
+    <div class="form-row"><label>Nombre completo</label><input type="text" id="r-name" placeholder="Pedro García"></div>
+    <div class="form-row"><label>Usuario</label><input type="text" id="r-user" placeholder="pgarcia" autocomplete="username"></div>
+    <div class="form-row"><label>Contraseña</label><input type="password" id="r-pass" placeholder="mínimo 4 caracteres" autocomplete="new-password"></div>
+    <div id="r-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" style="width:100%" id="btn-register" onclick="doRegister()">Crear cuenta</button>
+    <div class="pending-notice" id="reg-notice">
+      <strong>✅ Cuenta creada correctamente</strong>
+      Tu cuenta está pendiente de activación. El administrador te dará acceso en breve.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="main-app">
+<div class="topbar">
+  <div class="topbar-brand">GHV <span id="tb-year">2025</span></div>
+  <div class="topbar-right">
+    <span class="user-pill">
+      <span class="user-avatar" id="tb-av">?</span>
+      <span id="tb-name"></span>
+      <span class="role-badge-top" id="tb-role"></span>
+    </span>
+    <button class="btn-logout" onclick="doLogout()">Salir</button>
+  </div>
+</div>
+<div class="mobile-tabs" id="mob-nav"></div>
+<div class="app-layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main-content" id="main-content"></main>
+</div>
+</div>
+
+<!-- MODAL: jornada -->
+<div id="modal-hours" class="modal-overlay hidden">
+<div class="modal">
+  <h3 id="mh-title">Registrar jornada</h3>
+  <div class="type-toggle">
+    <button class="type-btn active" onclick="setHType('normal')">🏢 Normal</button>
+    <button class="type-btn" onclick="setHType('travel')">✈️ Con desplazamiento</button>
+  </div>
+  <input type="hidden" id="h-type" value="normal">
+  <input type="hidden" id="h-edit-id" value="">
+  <div class="form-row"><label>Fecha</label><input type="date" id="h-date"></div>
+  <div class="grid-2">
+    <div class="form-row"><label>Inicio jornada</label><input type="time" id="h-start"></div>
+    <div class="form-row"><label>Fin jornada</label><input type="time" id="h-end"></div>
+  </div>
+  <div class="travel-fields hidden" id="travel-extra">
+    <div class="form-row"><label>📍 Destino / localización</label><input type="text" id="h-dest" placeholder="Madrid — Cliente XYZ"></div>
+    <div class="grid-2">
+      <div class="form-row"><label>🚪 Salida de casa</label><input type="time" id="h-dep"></div>
+      <div class="form-row"><label>🏠 Llegada a casa</label><input type="time" id="h-arr"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-row"><label>🚗 Km (ida+vuelta)</label><input type="number" id="h-km" min="0" step="1" placeholder="0"></div>
+      <div class="form-row"><label>🍽 Dietas (€)</label><input type="number" id="h-dietas" min="0" step="0.5" placeholder="0.00"></div>
+    </div>
+  </div>
+  <div class="form-row"><label>Notas</label><textarea id="h-notes" rows="2"></textarea></div>
+  <div class="h-calc" id="h-calc">—</div>
+  <div class="flex gap-8">
+    <button class="btn btn-primary" id="btn-save-hours" onclick="saveHours()">Guardar</button>
+    <button class="btn" onclick="closeModals()">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: CSV -->
+<div id="modal-csv" class="modal-overlay hidden">
+<div class="modal">
+  <h3>Importar CSV</h3>
+  <div class="info-box ib-blue">Formato: <code style="font-family:monospace;font-size:11px">fecha,inicio,fin,horas,Notas</code><br>Fechas: DD/MM/YYYY o YYYY-MM-DD. Separador coma o punto y coma.</div>
+  <textarea class="csv-ta" id="csv-in" placeholder="fecha,inicio,fin,horas,Notas&#10;01/03/2025,08:00,15:30,7.5,Normal"></textarea>
+  <div id="csv-prev" style="font-size:12px;color:var(--txt2);margin-top:8px;min-height:18px"></div>
+  <div class="flex gap-8 mt-8">
+    <button class="btn btn-primary" id="btn-import" onclick="importCSV()">Importar</button>
+    <button class="btn" onclick="closeModals()">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: usuario (super) -->
+<div id="modal-user" class="modal-overlay hidden">
+<div class="modal">
+  <h3 id="mu-title">Gestionar usuario</h3>
+  <input type="hidden" id="mu-uid">
+  <div class="form-row"><label>Nombre completo</label><input type="text" id="mu-name"></div>
+  <div class="form-row"><label>Usuario</label><input type="text" id="mu-username"></div>
+  <div class="form-row"><label>Rol</label>
+    <select id="mu-role"><option value="tech">Técnico</option><option value="admin">Jefe / Admin</option><option value="super">Superusuario</option></select>
+  </div>
+  <div class="form-row"><label>Nueva contraseña (dejar en blanco = no cambiar)</label><input type="password" id="mu-pass"></div>
+  <div class="form-row"><label>Días de vacaciones anuales</label><input type="number" id="mu-vacdays" value="30" min="0"></div>
+  <div id="mu-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+  <div class="flex gap-8">
+    <button class="btn btn-primary" id="btn-save-user" onclick="saveUserModal()">Guardar</button>
+    <button class="btn" onclick="closeModals()">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: detalle empleado -->
+<div id="modal-emp" class="modal-overlay hidden">
+<div class="modal" style="width:min(720px,94vw)">
+  <h3 id="me-title">Detalle</h3>
+  <div id="me-body"></div>
+  <div class="mt-8"><button class="btn" onclick="closeModals()">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: solicitar vacaciones -->
+<div id="modal-vac-req" class="modal-overlay hidden">
+<div class="modal">
+  <h3>Solicitar vacaciones</h3>
+  <div class="info-box ib-blue">Tu solicitud quedará pendiente hasta que el administrador la apruebe.</div>
+  <div class="form-row"><label>Tipo</label>
+    <select id="rv-type"><option value="normal">Vacaciones anuales</option><option value="extra">Vacaciones por horas extra</option></select>
+  </div>
+  <div class="form-row"><label>Días seleccionados</label>
+    <div id="rv-days" style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--txt2);min-height:38px"></div>
+  </div>
+  <div class="form-row"><label>Nota (opcional)</label><textarea id="rv-note" rows="2"></textarea></div>
+  <div class="flex gap-8">
+    <button class="btn btn-primary" id="btn-submit-vac" onclick="submitVacReq()">Enviar solicitud</button>
+    <button class="btn" onclick="closeModals()">Cancelar</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  ⚙️  CONFIGURACIÓN SUPABASE
+//  Reemplaza estos dos valores con los de tu proyecto
+// ════════════════════════════════════════════════════════
+const SUPA_URL = 'https://ldazhwzhzzuurxshnblt.supabase.co';   // ← Project URL
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYXpod3poenp1dXJ4c2huYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzM5NzUsImV4cCI6MjA5MTE0OTk3NX0.oGHTb0gr8xexFM_PKuOVpcUXcO-vb4IfjclCu6Dr5l8';                  // ← anon public key
+
+// Email del jefe/admin que recibirá notificaciones de vacaciones
+// Usa EmailJS (gratis) — regístrate en emailjs.com y rellena estos valores
+const EMAILJS_SERVICE  = 'TU_SERVICE_ID';   // ← EmailJS Service ID
+const EMAILJS_TEMPLATE = 'TU_TEMPLATE_ID';  // ← EmailJS Template ID
+const EMAILJS_KEY      = 'TU_PUBLIC_KEY';   // ← EmailJS Public Key
+const ADMIN_EMAIL      = 'correo_del_jefe@empresa.com'; // ← email destino
+
+// ════════════════════════════════════════════════════════
+//  API HELPER
+// ════════════════════════════════════════════════════════
+async function supa(method, path, body=null, params=null){
+  let url = `${SUPA_URL}/rest/v1/${path}`;
+  if(params){
+    const q = new URLSearchParams(params);
+    url += '?' + q.toString();
+  }
+  const opts = {
+    method,
+    headers:{
+      'apikey': SUPA_KEY,
+      'Authorization': `Bearer ${SUPA_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': method==='POST' ? 'return=representation' : 'return=representation'
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if(!res.ok){
+    const err = await res.text();
+    throw new Error(`Supabase ${method} ${path}: ${res.status} — ${err}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+const db = {
+  get:  (table, params) => supa('GET',    table, null, params),
+  post: (table, body)   => supa('POST',   table, body),
+  patch:(table, body, params) => supa('PATCH', table, body, params),
+  del:  (table, params) => supa('DELETE', table, null, params),
+};
+
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const WDAYS=['L','M','X','J','V','S','D'];
+const $=id=>document.getElementById(id);
+const qa=sel=>document.querySelectorAll(sel);
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function timeToMin(t){if(!t)return 0;const[h,m]=t.substring(0,5).split(':').map(Number);return h*60+m}
+function calcHours(s,e){return(timeToMin(e)-timeToMin(s))/60}
+function calcExtra(s,e,cs,ce){return Math.max(0,(timeToMin(e)-timeToMin(s)-(timeToMin(ce)-timeToMin(cs)))/60)}
+function dateKey(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function parseDate(k){const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)}
+function isWeekend(k){const d=parseDate(k).getDay();return d===0||d===6}
+function getDayName(k){return['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][parseDate(k).getDay()]}
+function todayISO(){return new Date().toISOString().split('T')[0]}
+function nowHHMM(){const n=new Date();return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')}
+function nowHHMMSS(){const n=new Date();return`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`}
+function fmtDate(d){return d.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function hashPw(pw){return btoa(unescape(encodeURIComponent(pw)))} // simple base64, good enough for internal tool
+function toast(msg,type='default'){
+  qa('.toast').forEach(t=>t.remove());
+  const t=document.createElement('div');t.className='toast';
+  const c={default:'var(--accent)',success:'var(--green)',error:'var(--red)',warning:'var(--amber)'};
+  t.style.background=c[type]||c.default;t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200);
+}
+function setLoading(btnId, loading, originalText=''){
+  const btn=$(btnId);if(!btn)return;
+  btn.disabled=loading;
+  btn.textContent=loading?'Cargando…':originalText;
+}
+function setErr(id,msg){$(id).textContent=msg;$(id).style.display='block'}
+
+// ════════════════════════════════════════════════════════
+//  SESSION (persisted in sessionStorage so mobile refresh works)
+// ════════════════════════════════════════════════════════
+let ses = {uid:null, role:null, user:null};
+let selRange = [];
+let cachedData = {hours:[], vacs:[], vacReqs:[], prevYears:[], prevVacDays:[], users:[]};
+let calState = {year:new Date().getFullYear(), month:new Date().getMonth()};
+
+function getCfg(){return ses.user?.cfg || {year:new Date().getFullYear(),startH:'08:00',endH:'15:00',vacDays:30,hPerVacDay:7}}
+
+async function restoreSession(){
+  const saved = sessionStorage.getItem('ghv_ses');
+  if(saved){
+    try{
+      const s = JSON.parse(saved);
+      // Re-fetch user to check still active
+      const users = await db.get('users', {'uid':'eq.'+s.uid, 'status':'eq.active', 'select':'*'});
+      if(users.length){
+        ses.uid=s.uid; ses.role=s.role; ses.user=users[0];
+        await loadUserData();
+        showApp();
+        return;
+      }
+    }catch(e){}
+  }
+  hideLoading();
+}
+
+function saveSession(){
+  sessionStorage.setItem('ghv_ses', JSON.stringify({uid:ses.uid, role:ses.role}));
+}
+
+function hideLoading(){
+  $('loading-screen').style.display='none';
+  $('auth-screen').style.display='flex';
+}
+function showApp(){
+  $('loading-screen').style.display='none';
+  $('auth-screen').style.display='none';
+  $('main-app').style.display='block';
+  buildUI();
+  // Topbar
+  const u=ses.user;
+  $('tb-name').textContent=u.name.split(' ')[0];
+  $('tb-av').textContent=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  $('tb-year').textContent=getCfg().year;
+  const rl={super:'Superusuario',admin:'Admin',tech:'Técnico'};
+  const rc={super:'role-super',admin:'role-admin',tech:'role-tech'};
+  $('tb-role').textContent=rl[u.role]||u.role;
+  $('tb-role').className='role-badge-top '+(rc[u.role]||'role-tech');
+}
+
+// ════════════════════════════════════════════════════════
+//  DATA LOADING
+// ════════════════════════════════════════════════════════
+async function loadUserData(){
+  const uid_=ses.uid;
+  // Load all in parallel
+  const [hours, vacs, vacReqs, prevYears, prevVacDays] = await Promise.all([
+    db.get('hours', {'uid':'eq.'+uid_, 'order':'date.desc', 'select':'*'}),
+    db.get('vacations', {'uid':'eq.'+uid_, 'select':'*'}),
+    db.get('vac_requests', {'uid':'eq.'+uid_, 'order':'created_at.desc', 'select':'*'}),
+    db.get('prev_years', {'uid':'eq.'+uid_, 'select':'*'}),
+    db.get('prev_vac_days', {'uid':'eq.'+uid_, 'select':'*'}),
+  ]);
+  cachedData.hours = hours;
+  cachedData.vacs = vacs;
+  cachedData.vacReqs = vacReqs;
+  cachedData.prevYears = prevYears;
+  cachedData.prevVacDays = prevVacDays;
+}
+
+async function loadAdminData(){
+  const [users, hours, vacs, vacReqs] = await Promise.all([
+    db.get('users', {'status':'eq.active', 'role':'neq.super', 'select':'*'}),
+    db.get('hours', {'select':'*'}),
+    db.get('vacations', {'select':'*'}),
+    db.get('vac_requests', {'order':'created_at.desc', 'select':'*'}),
+  ]);
+  cachedData.users = users;
+  cachedData.allHours = hours;
+  cachedData.allVacs = vacs;
+  cachedData.allVacReqs = vacReqs;
+}
+
+async function loadPendingUsers(){
+  cachedData.pendingUsers = await db.get('users', {'status':'eq.pending', 'select':'*'});
+}
+
+// ════════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════════
+function switchAuthTab(tab){
+  $('auth-login').classList.toggle('hidden',tab!=='login');
+  $('auth-register').classList.toggle('hidden',tab!=='register');
+  $('reg-notice').style.display='none';
+  qa('.auth-tab').forEach((el,i)=>el.classList.toggle('active',i===(tab==='login'?0:1)));
+}
+
+async function doLogin(){
+  const username=$('l-user').value.trim().toLowerCase();
+  const pass=$('l-pass').value;
+  if(!username||!pass){setErr('l-err','Completa usuario y contraseña');return}
+  setLoading('btn-login',true,'Entrar');
+  try{
+    const users = await db.get('users', {'username':'eq.'+username, 'select':'*'});
+    if(!users.length){setErr('l-err','Usuario no encontrado. Comprueba que el nombre de usuario es correcto.');return}
+    const u=users[0];
+    if(u.password !== hashPw(pass)){
+      // Debug helper: show hashes in console so admin can fix
+      console.warn('Hash esperado:', hashPw(pass), '| Hash en BD:', u.password);
+      setErr('l-err','Contraseña incorrecta.');return
+    }
+    if(u.status==='pending'){setErr('l-err','Tu cuenta está pendiente de activación por el administrador.');return}
+    if(u.status==='disabled'){setErr('l-err','Tu cuenta está desactivada. Contacta con el administrador.');return}
+    $('l-err').style.display='none';
+    ses.uid=u.uid; ses.role=u.role; ses.user=u;
+    saveSession();
+    await loadUserData();
+    showApp();
+  }catch(e){
+    setErr('l-err','Error de conexión con Supabase: '+e.message);
+    console.error('Login error:',e);
+  }finally{
+    setLoading('btn-login',false,'Entrar');
+  }
+}
+
+async function doRegister(){
+  const name=$('r-name').value.trim();
+  const username=$('r-user').value.trim().toLowerCase();
+  const pass=$('r-pass').value;
+  if(!name||!username||!pass){setErr('r-err','Rellena todos los campos');return}
+  if(pass.length<4){setErr('r-err','Contraseña mínimo 4 caracteres');return}
+  setLoading('btn-register',true,'Crear cuenta');
+  try{
+    // Check username unique
+    const exists = await db.get('users', {'username':'eq.'+username, 'select':'uid'});
+    if(exists.length){setErr('r-err','Ese nombre de usuario ya existe');return}
+    await db.post('users', {
+      uid: uid(),
+      name, username,
+      password: hashPw(pass),
+      role:'tech', status:'pending',
+      cfg:{year:new Date().getFullYear(),startH:'08:00',endH:'15:00',vacDays:30,hPerVacDay:7}
+    });
+    $('r-err').style.display='none';
+    $('r-name').value='';$('r-user').value='';$('r-pass').value='';
+    $('reg-notice').style.display='block';
+  }catch(e){
+    setErr('r-err','Error: '+e.message);
+  }finally{
+    setLoading('btn-register',false,'Crear cuenta');
+  }
+}
+
+function doLogout(){
+  ses={uid:null,role:null,user:null};
+  cachedData={hours:[],vacs:[],vacReqs:[],prevYears:[],users:[]};
+  selRange=[];
+  sessionStorage.removeItem('ghv_ses');
+  if(clockTick)clearInterval(clockTick); clockTick=null;
+  $('main-app').style.display='none';
+  $('auth-screen').style.display='flex';
+  $('l-user').value='';$('l-pass').value='';
+  $('l-err').style.display='none';
+}
+
+// ════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════
+const NAV_TECH=[
+  {id:'fichar',   icon:'⏱', label:'Fichar',        sec:'Mi jornada'},
+  {id:'dashboard',icon:'📊', label:'Resumen'},
+  {id:'calendar', icon:'📅', label:'Calendario'},
+  {id:'hours',    icon:'📋', label:'Mis jornadas'},
+  {id:'vacaciones',icon:'🏖',label:'Vacaciones'},
+  {id:'config',   icon:'⚙️', label:'Ajustes',       sec:'Cuenta'},
+];
+const NAV_ADMIN=[
+  {id:'admin-team',   icon:'👥',label:'Mi equipo',         sec:'Administración'},
+  {id:'admin-vac',    icon:'✅',label:'Solicitudes vac.'},
+  {id:'admin-pending',icon:'🔔',label:'Nuevos usuarios'},
+];
+const NAV_SUPER=[
+  {id:'super-users',icon:'🔐',label:'Usuarios',sec:'Superusuario'},
+];
+
+function buildUI(){
+  const r=ses.role;
+  let pages=[...NAV_TECH];
+  if(r==='admin'||r==='super') pages=[...pages,...NAV_ADMIN];
+  if(r==='super') pages=[...pages,...NAV_SUPER];
+  let shtml='';let lastSec='';
+  pages.forEach(p=>{
+    if(p.sec&&p.sec!==lastSec){shtml+=`<div class="nav-group"><div class="nav-label">${p.sec}</div></div>`;lastSec=p.sec;}
+    else if(!p.sec&&lastSec){lastSec='';}
+    shtml+=`<div class="nav-group"><button class="nav-item" id="nav-${p.id}" onclick="showPage('${p.id}')"><span class="nav-icon">${p.icon}</span>${p.label}</button></div>`;
+  });
+  $('sidebar').innerHTML=shtml;
+  $('mob-nav').innerHTML=pages.slice(0,6).map(p=>`<button class="mob-tab" id="mob-${p.id}" onclick="showPage('${p.id}')">${p.icon} ${p.label}</button>`).join('');
+  let html='';
+  html+=tplFichar()+tplDashboard()+tplCalendar()+tplHours()+tplVacaciones()+tplConfig();
+  if(r==='admin'||r==='super') html+=tplAdminTeam()+tplAdminVac()+tplAdminPending();
+  if(r==='super') html+=tplSuperUsers();
+  $('main-content').innerHTML=html;
+  initHoursFilter();
+  showPage('fichar');
+}
+
+function showPage(name){
+  qa('.page').forEach(p=>p.classList.remove('active'));
+  $(name)?.classList.add('active');
+  qa('.nav-item,.mob-tab').forEach(el=>el.classList.remove('active'));
+  $('nav-'+name)?.classList.add('active');
+  $('mob-'+name)?.classList.add('active');
+  const renders={
+    fichar:renderFichar, dashboard:renderDashboard,
+    calendar:()=>{selRange=[];vacType='normal';renderCalendar();},
+    hours:renderHoursTable, vacaciones:renderVacTab, config:renderConfig,
+    'admin-team':async()=>{await loadAdminData();renderAdminTeam()},
+    'admin-vac':async()=>{await loadAdminData();renderAdminVac()},
+    'admin-pending':async()=>{await loadPendingUsers();renderAdminPending()},
+    'super-users':async()=>{cachedData.users=await db.get('users',{'select':'*','order':'created_at.desc'});renderSuperUsers()},
+  };
+  renders[name]?.();
+}
+
+// ════════════════════════════════════════════════════════
+//  PAGE TEMPLATES (same as before)
+// ════════════════════════════════════════════════════════
+function tplFichar(){return`<div class="page" id="fichar">
+  <div class="page-title">Fichar jornada</div>
+  <div class="page-sub">Registra tu entrada y salida del día</div>
+  <div class="clock-panel">
+    <div class="clock-time" id="lv-clock">--:--:--</div>
+    <div class="clock-date-txt" id="lv-date"></div>
+    <div class="clock-status" id="lv-status"><span class="s-dot out"></span>Sin fichar hoy</div>
+    <div class="clock-btns">
+      <button class="cbtn cbtn-in" id="btn-in" onclick="clockIn()">▶ Entrada</button>
+      <button class="cbtn cbtn-travel" id="btn-travel" onclick="clockInTravel()">✈ Entrada viaje</button>
+      <button class="cbtn cbtn-out hidden" id="btn-out" onclick="clockOut()">■ Registrar salida</button>
+    </div>
+  </div>
+  <div class="section"><div class="section-title">Jornadas recientes</div><div id="fichar-recent"></div></div>
+</div>`}
+
+function tplDashboard(){return`<div class="page" id="dashboard">
+  <div class="page-title">Resumen</div>
+  <div class="page-sub">Tu situación actual de horas y vacaciones</div>
+  <div class="cards" id="dash-cards"></div>
+  <div class="grid-2">
+    <div class="section"><div class="section-title">Vacaciones anuales</div><div id="prog-vac"></div></div>
+    <div class="section"><div class="section-title">Por horas extra</div><div id="prog-extra"></div></div>
+  </div>
+  <div class="section"><div class="section-title">Últimas jornadas</div>
+  <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extra</th><th>Destino</th></tr></thead><tbody id="dash-recent"></tbody></table></div></div>
+</div>`}
+
+function tplCalendar(){return`<div class="page" id="calendar">
+  <div class="page-title">Calendario</div>
+  <div class="page-sub">Elige el tipo de vacaciones y selecciona los días</div>
+  <div class="section">
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Tipo de vacaciones a solicitar</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="cbtn-vac active" id="vtype-normal" onclick="setVacType('normal')">
+          🌴 Anuales <span style="font-size:10px;opacity:.7;margin-left:4px">incl. fines de semana</span>
+        </button>
+        <button class="cbtn-vac" id="vtype-extra" onclick="setVacType('extra')">
+          ⏱ Por horas extra <span style="font-size:10px;opacity:.7;margin-left:4px">solo días laborables</span>
+        </button>
+      </div>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nb" onclick="prevMonth()">&#8249;</button>
+      <span class="cal-title-txt" id="cal-title"></span>
+      <button class="cal-nb" onclick="nextMonth()">&#8250;</button>
+    </div>
+    <div class="legend">
+      <span class="leg-item"><span class="leg-sq" style="background:#C8EDD8;border-color:#6DB98A"></span>Vac. anuales</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#C2D9F7;border-color:#5A9BE0"></span>Vac. horas extra</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#FAD97A;border-color:#E0A820"></span>Pendiente aprobación</span>
+      <span class="leg-item"><span class="leg-sq" style="background:var(--surface2);border-color:var(--border)"></span>Jornada registrada</span>
+    </div>
+    <div class="cal-grid" id="cal-heads"></div>
+    <div class="cal-grid" id="cal-days" style="margin-top:4px"></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="cal-acts"></div>
+  </div>
+  <div class="section"><div class="section-title">Días marcados este mes</div><div id="cal-month-list"></div></div>
+</div>`}
+
+function tplHours(){return`<div class="page" id="hours">
+  <div class="page-title">Mis jornadas</div>
+  <div class="page-sub">Historial completo de registros</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
+    <button class="btn btn-primary" onclick="openAddHours()">+ Añadir jornada</button>
+    <button class="btn" onclick="openImportCSV()">⇅ Importar CSV</button>
+    <select id="fy" onchange="renderHoursTable()" style="width:90px"></select>
+    <select id="fm" onchange="renderHoursTable()" style="width:140px">
+      <option value="">Todos los meses</option>
+      ${MONTHS.map((m,i)=>`<option value="${i}">${m}</option>`).join('')}
+    </select>
+    <span id="h-count" style="font-size:12px;color:var(--txt3)"></span>
+  </div>
+  <div class="section"><div class="tbl-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extra</th><th>Destino</th><th>Km</th><th>Dietas</th><th>Notas</th><th></th></tr></thead>
+    <tbody id="hours-tbody"></tbody>
+  </table></div></div>
+</div>`}
+
+function tplVacaciones(){return`<div class="page" id="vacaciones">
+  <div class="page-title">Vacaciones</div>
+  <div class="page-sub">Saldo y días disfrutados</div>
+  <div class="section"><div class="section-title">Resumen anual</div><div id="vac-summary"></div></div>
+  <div class="section"><div class="section-title">Historial de días</div>
+  <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Día</th><th>Tipo</th><th>Estado</th><th>Computa</th></tr></thead><tbody id="vac-tbody"></tbody></table></div></div>
+  <div class="section"><div class="section-title">Mis solicitudes</div><div id="my-reqs"></div></div>
+</div>`}
+
+function tplConfig(){return`<div class="page" id="config">
+  <div class="page-title">Ajustes</div>
+  <div class="page-sub">Configura tu jornada habitual</div>
+  <div class="section"><div class="section-title">Jornada laboral</div>
+    <div class="grid-2">
+      <div class="form-row"><label>Año en curso</label><input type="number" id="cfg-year"></div>
+      <div class="form-row"><label>Días de vacaciones al año</label><input type="number" id="cfg-vd"></div>
+      <div class="form-row"><label>Hora inicio habitual</label><input type="time" id="cfg-s"></div>
+      <div class="form-row"><label>Hora fin habitual</label><input type="time" id="cfg-e"></div>
+      <div class="form-row"><label>Horas extra → 1 día vacaciones</label><input type="number" id="cfg-hpd"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-save-cfg" onclick="saveConfig()">Guardar ajustes</button>
+  </div>
+  <div class="section"><div class="section-title">Horas extra de años anteriores</div>
+    <div class="info-box ib-blue">Añade horas extra pendientes de años pasados.</div>
+    <div id="prev-list"></div>
+    <button class="btn mt-8" onclick="addPrevYear()">+ Añadir año anterior</button>
+  </div>
+  <div class="section"><div class="section-title">Días de vacaciones anuales de años anteriores</div>
+    <div class="info-box ib-green">Si tienes días de vacaciones anuales pendientes de años pasados, añádelos aquí para sumarlos al saldo disponible.</div>
+    <div id="prev-vac-list"></div>
+    <button class="btn mt-8" onclick="addPrevVacYear()">+ Añadir año anterior</button>
+  </div>
+  <div class="section">
+    <div class="section-title">🔑 Cambiar contraseña</div>
+    <div class="grid-2">
+      <div class="form-row"><label>Contraseña actual</label><input type="password" id="pw-current" placeholder="••••••••" autocomplete="current-password"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-row"><label>Nueva contraseña</label><input type="password" id="pw-new" placeholder="mínimo 4 caracteres" autocomplete="new-password"></div>
+      <div class="form-row"><label>Repetir nueva contraseña</label><input type="password" id="pw-confirm" placeholder="repite la contraseña" autocomplete="new-password"></div>
+    </div>
+    <div id="pw-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" id="btn-save-pw" onclick="changePassword()">Cambiar contraseña</button>
+  </div>
+</div>`}
+
+function tplAdminTeam(){return`<div class="page" id="admin-team">
+  <div class="page-title">Mi equipo</div>
+  <div class="page-sub">Resumen de horas y vacaciones del equipo</div>
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <select id="af-year" style="width:90px" onchange="renderAdminTeam()">
+      ${[new Date().getFullYear()-1,new Date().getFullYear(),new Date().getFullYear()+1].map(y=>`<option value="${y}"${y===new Date().getFullYear()?' selected':''}>${y}</option>`).join('')}
+    </select>
+    <button class="btn" onclick="exportCSV()">⬇ Exportar CSV</button>
+  </div>
+  <div id="team-list"><div class="empty-state"><div class="icon">⏳</div><p>Cargando equipo…</p></div></div>
+</div>`}
+
+function tplAdminVac(){return`<div class="page" id="admin-vac">
+  <div class="page-title">Solicitudes de vacaciones</div>
+  <div class="page-sub">Aprueba o rechaza las peticiones del equipo</div>
+  <div id="admin-vac-list"><div class="empty-state"><div class="icon">⏳</div><p>Cargando…</p></div></div>
+</div>`}
+
+function tplAdminPending(){return`<div class="page" id="admin-pending">
+  <div class="page-title">Nuevos usuarios</div>
+  <div class="page-sub">Técnicos registrados pendientes de activación</div>
+  <div id="pending-list"><div class="empty-state"><div class="icon">⏳</div><p>Cargando…</p></div></div>
+</div>`}
+
+function tplSuperUsers(){return`<div class="page" id="super-users">
+  <div class="page-title">Gestión de usuarios</div>
+  <div class="page-sub">Control total de cuentas y roles</div>
+  <button class="btn btn-primary" style="margin-bottom:1rem" onclick="openCreateUser()">+ Crear usuario</button>
+  <div id="super-list"><div class="empty-state"><div class="icon">⏳</div><p>Cargando…</p></div></div>
+  <div class="section" style="margin-top:1.5rem;border-color:var(--red-border)">
+    <div class="section-title" style="color:var(--red)">⚠️ Zona de peligro</div>
+    <p style="font-size:13px;color:var(--txt2);margin-bottom:1rem">Elimina permanentemente las jornadas y vacaciones de un usuario. Esta acción <strong>no se puede deshacer</strong>.</p>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="form-row" style="margin-bottom:0;flex:1;min-width:200px">
+        <label>Selecciona el usuario</label>
+        <select id="danger-uid" style="width:100%"><option value="">— elige usuario —</option></select>
+      </div>
+      <button class="btn btn-danger" style="flex-shrink:0" onclick="superClearUserData()">🗑 Borrar sus datos</button>
+    </div>
+    <p style="font-size:11px;color:var(--txt3);margin-top:8px">Se borrarán todas sus jornadas, vacaciones, solicitudes y horas de años anteriores. Su cuenta permanecerá activa.</p>
+  </div>
+</div>`}
+
+// ════════════════════════════════════════════════════════
+//  FICHAR
+// ════════════════════════════════════════════════════════
+let clockTick=null;
+
+function renderFichar(){
+  $('lv-date').textContent=fmtDate(new Date());
+  if(clockTick)clearInterval(clockTick);
+  clockTick=setInterval(()=>{if($('lv-clock'))$('lv-clock').textContent=nowHHMMSS();else clearInterval(clockTick)},1000);
+  $('lv-clock').textContent=nowHHMMSS();
+  refreshClockStatus();
+  renderFicharRecent();
+}
+
+function getOpenRecord(){
+  return cachedData.hours.find(h=>h.is_open && h.date===todayISO());
+}
+
+function refreshClockStatus(){
+  const open=getOpenRecord();
+  const st=$('lv-status');const btnIn=$('btn-in');const btnTv=$('btn-travel');const btnOut=$('btn-out');
+  if(!st)return;
+  if(open){
+    const lbl=open.type==='travel'?`✈ Viaje — ${open.dest||'destino sin especificar'}`:'🏢 Jornada normal';
+    st.innerHTML=`<span class="s-dot ${open.type==='travel'?'travel':'in'}"></span>Trabajando desde <strong>${open.start_time.substring(0,5)}</strong> — ${esc(lbl)}`;
+    btnIn.classList.add('hidden');btnTv.classList.add('hidden');btnOut.classList.remove('hidden');
+  } else {
+    const done=cachedData.hours.filter(h=>h.date===todayISO()&&!h.is_open).length;
+    st.innerHTML=done>0
+      ?`<span class="s-dot out"></span>Jornada completada — <strong>${done}</strong> registro(s) hoy`
+      :`<span class="s-dot out"></span>Sin fichar hoy`;
+    btnIn.classList.remove('hidden');btnTv.classList.remove('hidden');btnOut.classList.add('hidden');
+  }
+}
+
+async function clockIn(){
+  if(getOpenRecord()){toast('Ya tienes una entrada activa','warning');return}
+  const t=nowHHMM();
+  const btn=$('btn-in'); btn.disabled=true;
+  try{
+    const rec = await db.post('hours', {uid:ses.uid, date:todayISO(), start_time:t, end_time:null, type:'normal', is_open:true});
+    cachedData.hours.unshift(rec[0]);
+    toast('Entrada registrada — '+t,'success');
+    refreshClockStatus();renderFicharRecent();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;}
+}
+
+function clockInTravel(){
+  if(getOpenRecord()){toast('Ya tienes una entrada activa','warning');return}
+  openAddHours('travel',true);
+}
+
+async function clockOut(){
+  const open=getOpenRecord();
+  if(!open){toast('No hay entrada activa','error');return}
+  const t=nowHHMM();
+  if(timeToMin(t)<=timeToMin(open.start_time)){toast('La hora de salida debe ser posterior','error');return}
+  const btn=$('btn-out'); btn.disabled=true;
+  try{
+    await db.patch('hours', {end_time:t, is_open:false}, {'id':'eq.'+open.id});
+    open.end_time=t; open.is_open=false;
+    toast('Salida registrada — '+t,'success');
+    refreshClockStatus();renderFicharRecent();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;}
+}
+
+function renderFicharRecent(){
+  const el=$('fichar-recent');if(!el)return;
+  const cfg=getCfg();
+  const rows=cachedData.hours.slice(0,6);
+  if(!rows.length){el.innerHTML=`<div class="empty-state"><div class="icon">⏱</div><p>¡Ficha tu primera jornada!</p></div>`;return}
+  el.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extra</th><th>Destino</th></tr></thead><tbody>
+  ${rows.map(h=>{
+    const s=h.start_time?.substring(0,5)||'',e=h.end_time?.substring(0,5)||'';
+    const hrs=s&&e?calcHours(s,e):null;const ex=s&&e?calcExtra(s,e,cfg.startH,cfg.endH):null;
+    return`<tr>
+      <td><strong>${h.date}</strong></td>
+      <td>${h.type==='travel'?'<span class="badge b-amber">Viaje</span>':'<span class="badge b-gray">Normal</span>'}</td>
+      <td>${s}</td>
+      <td>${h.is_open?'<span class="badge b-green" style="animation:blink 2s infinite">En curso</span>':(e||'—')}</td>
+      <td>${hrs!==null?hrs.toFixed(1)+'h':'—'}</td>
+      <td>${ex!==null&&ex>0?`<span class="badge b-blue">+${ex.toFixed(1)}h</span>`:'—'}</td>
+      <td style="font-size:12px;color:var(--txt2)">${esc(h.dest||'')}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════════════════
+function getHoursFor(uid_=ses.uid){
+  const arr = uid_===ses.uid ? cachedData.hours : (cachedData.allHours||[]).filter(h=>h.uid===uid_);
+  return arr;
+}
+function getVacsFor(uid_=ses.uid){
+  const arr = uid_===ses.uid ? cachedData.vacs : (cachedData.allVacs||[]).filter(v=>v.uid===uid_);
+  // convert to map {dateStr: vtype}
+  const m={};arr.forEach(v=>m[v.date]=v.vtype);return m;
+}
+function getCfgFor(uid_=ses.uid){
+  if(uid_===ses.uid)return getCfg();
+  const u=(cachedData.users||[]).find(u=>u.uid===uid_);
+  return u?.cfg||{year:new Date().getFullYear(),startH:'08:00',endH:'15:00',vacDays:30,hPerVacDay:7};
+}
+
+function totalExtraH(uid_=ses.uid){
+  const cfg=getCfgFor(uid_);const yr=cfg.year;
+  const cur=getHoursFor(uid_).filter(h=>!h.is_open&&h.end_time&&new Date(h.date).getFullYear()===yr)
+    .reduce((a,h)=>a+calcExtra(h.start_time,h.end_time,cfg.startH,cfg.endH),0);
+  const prev=(uid_===ses.uid?cachedData.prevYears:(cachedData.prevYears||[])).filter(p=>p.uid===uid_)
+    .reduce((a,p)=>a+(+p.hours||0),0);
+  return cur+prev;
+}
+function totalExtraD(uid_=ses.uid){return Math.floor(totalExtraH(uid_)/getCfgFor(uid_).hPerVacDay)}
+function normalVacUsed(uid_=ses.uid){return Object.values(getVacsFor(uid_)).filter(v=>v==='normal').length}
+function normalVacCarryOver(uid_=ses.uid){
+  // Days carried over from previous years
+  const arr=uid_===ses.uid?cachedData.prevVacDays:(cachedData.prevVacDays||[]).filter(p=>p.uid===uid_);
+  return arr.reduce((a,p)=>a+(+p.days||0),0);
+}
+function normalVacTotal(uid_=ses.uid){return getCfgFor(uid_).vacDays+normalVacCarryOver(uid_)}
+function extraVacUsed(uid_=ses.uid){
+  const vm=getVacsFor(uid_);
+  return Object.keys(vm).filter(k=>vm[k]==='extra'&&!isWeekend(k)).length;
+}
+
+// ════════════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════════════
+function renderDashboard(){
+  const cfg=getCfg();
+  const eH=totalExtraH(),eDays=totalExtraD(),vUsed=normalVacUsed(),vTotal=normalVacTotal(),eUsed=extraVacUsed();
+  const carry=normalVacCarryOver();
+  const hours=cachedData.hours.filter(h=>!h.is_open&&h.end_time&&new Date(h.date).getFullYear()===cfg.year);
+  $('dash-cards').innerHTML=`
+    <div class="card card-g"><div class="card-label">Vac. anuales libres</div><div class="card-val">${vTotal-vUsed}<span> / ${vTotal}</span></div><div class="card-sub">${vUsed} usados${carry>0?` · +${carry} arrastrados`:''}</div></div>
+    <div class="card card-b"><div class="card-label">Vac. extra libres</div><div class="card-val">${eDays-eUsed}<span> / ${eDays}</span></div><div class="card-sub">${eUsed} días usados</div></div>
+    <div class="card card-a"><div class="card-label">Horas extra acum.</div><div class="card-val">${eH.toFixed(1)}<span>h</span></div><div class="card-sub">${eDays} días generados</div></div>
+    <div class="card card-p"><div class="card-label">Jornadas ${cfg.year}</div><div class="card-val">${hours.length}</div><div class="card-sub">${hours.filter(h=>h.type==='travel').length} con desplazamiento</div></div>`;
+  const pv=vTotal>0?Math.min(100,Math.round(vUsed/vTotal*100)):0;
+  $('prog-vac').innerHTML=`<div class="prog-wrap"><div class="prog-label"><span>Usados: <strong>${vUsed}</strong></span><span>Quedan: <strong>${vTotal-vUsed}</strong></span></div><div class="progress-bar"><div class="progress-fill" style="width:${pv}%;background:var(--green)"></div></div><div style="font-size:11px;color:var(--txt3);margin-top:4px">${pv}% de ${vTotal} días${carry>0?` (incl. ${carry} de años ant.)`:''}</div></div>`;
+  const pe=eDays>0?Math.min(100,Math.round(eUsed/eDays*100)):0;
+  $('prog-extra').innerHTML=`<div class="prog-wrap"><div class="prog-label"><span>Usados: <strong>${eUsed}</strong></span><span>Quedan: <strong>${eDays-eUsed}</strong></span></div><div class="progress-bar"><div class="progress-fill" style="width:${pe}%;background:var(--blue)"></div></div><div style="font-size:11px;color:var(--txt3);margin-top:4px">${eH.toFixed(1)}h ÷ ${cfg.hPerVacDay}h = ${eDays} días</div></div>`;
+  $('dash-recent').innerHTML=hours.slice(0,8).map(h=>{
+    const s=h.start_time?.substring(0,5),e=h.end_time?.substring(0,5);
+    const ex=calcExtra(s,e,cfg.startH,cfg.endH),hrs=calcHours(s,e);
+    return`<tr><td><strong>${h.date}</strong></td><td>${h.type==='travel'?'<span class="badge b-amber">Viaje</span>':'<span class="badge b-gray">Normal</span>'}</td><td>${s}</td><td>${e}</td><td>${hrs.toFixed(1)}h</td><td>${ex>0?`<span class="badge b-blue">+${ex.toFixed(1)}h</span>`:'—'}</td><td style="font-size:12px;color:var(--txt2)">${esc(h.dest||'')}</td></tr>`;
+  }).join('')||'<tr><td colspan="7" style="color:var(--txt3);text-align:center;padding:2rem">Sin jornadas</td></tr>';
+}
+
+// ════════════════════════════════════════════════════════
+//  CALENDAR
+// ════════════════════════════════════════════════════════
+let vacType='normal'; // current vacation type selection
+
+function setVacType(type){
+  vacType=type;
+  $('vtype-normal')?.classList.toggle('active',type==='normal');
+  $('vtype-extra')?.classList.toggle('active',type==='extra');
+  selRange=selRange.filter(k=>type==='normal'||!isWeekend(k));
+  renderCalendar();
+}
+
+function renderCalendar(){
+  const y=calState.year,m=calState.month;
+  $('cal-title').textContent=`${MONTHS[m]} ${y}`;
+  $('cal-heads').innerHTML=WDAYS.map(d=>`<div class="cal-head">${d}</div>`).join('');
+  const cfg=getCfg();
+  const hMap={};
+  cachedData.hours.forEach(h=>{
+    if(!hMap[h.date])hMap[h.date]={extra:0,travel:false};
+    if(!h.is_open&&h.end_time){hMap[h.date].extra+=calcExtra(h.start_time,h.end_time,cfg.startH,cfg.endH);}
+    if(h.type==='travel')hMap[h.date].travel=true;
+  });
+  const vacMap=getVacsFor();
+  const first=new Date(y,m,1).getDay();const offset=first===0?6:first-1;
+  const dim=new Date(y,m+1,0).getDate();const td=new Date();
+  let html='';
+  for(let i=0;i<offset;i++)html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const k=dateKey(y,m,d);const vt=vacMap[k];
+    const isToday=td.getFullYear()===y&&td.getMonth()===m&&td.getDate()===d;
+    const isSel=selRange.includes(k);const isWe=isWeekend(k);
+    const hi=hMap[k];const hasH=!!hi;const hasEx=hi&&hi.extra>0;const hasT=hi&&hi.travel;
+    // For extra vac type, weekends are blocked
+    const isBlocked=vacType==='extra'&&isWe&&!vt;
+    let cls='cal-day';
+    if(isWe)cls+=' we';
+    if(isBlocked)cls+=' we-blocked';
+    if(vt==='normal')cls+=' vn';else if(vt==='extra')cls+=' ve';
+    else if(vt&&vt.startsWith('pending'))cls+=' vp';
+    else if(hasT)cls+=' ht';else if(hasH)cls+=' hh';
+    if(hasEx)cls+=' hex';if(isToday)cls+=' today';if(isSel)cls+=' sel';
+    const dot=hasH&&!vt?`<div class="dot-ind"></div>`:'';
+    const click=isBlocked?'':`onclick="toggleDay('${k}')"`;
+    html+=`<div class="${cls}" ${click}>${d}${dot}</div>`;
+  }
+  $('cal-days').innerHTML=html;
+  const act=$('cal-acts');
+  if(selRange.length>0){
+    const wdays=selRange.filter(k=>!isWeekend(k)).length;
+    const totalLabel=vacType==='normal'?`${selRange.length} días (incl. fines de semana)`:`${wdays} días laborables`;
+    act.innerHTML=`
+      <span style="font-size:13px;color:var(--txt2)">${totalLabel}</span>
+      <button class="btn btn-sm btn-primary" onclick="submitVacReq()">
+        ${vacType==='normal'?'🌴 Solicitar vacaciones anuales':'⏱ Solicitar vacaciones extra'}
+      </button>
+      <button class="btn btn-sm" onclick="selRange=[];renderCalendar()">Deseleccionar</button>`;
+  } else {
+    const hint=vacType==='extra'
+      ?'Los fines de semana no computan — selecciona solo días laborables'
+      :'Pulsa el primer y último día del periodo para seleccionarlo';
+    act.innerHTML=`<span style="font-size:12px;color:var(--txt3)">${hint}</span>`;
+  }
+  const vacThisMonth=Object.keys(vacMap).filter(k=>{const d=parseDate(k);return d.getFullYear()===y&&d.getMonth()===m}).sort();
+  $('cal-month-list').innerHTML=vacThisMonth.length
+    ?`<div style="display:flex;flex-wrap:wrap;gap:6px">${vacThisMonth.map(k=>{
+        const t=vacMap[k];
+        const lbl={normal:'Anual',extra:'Extra',pending_normal:'Pend. anual',pending_extra:'Pend. extra'}[t]||t;
+        const cls2={normal:'b-green',extra:'b-blue',pending_normal:'b-amber',pending_extra:'b-amber'}[t]||'b-gray';
+        const canDel=t==='normal'||t==='extra';
+        return`<span class="badge ${cls2}" style="gap:5px;${canDel?'cursor:pointer':''}" ${canDel?`onclick="removeVacDay('${k}')"`:''}>${k} ${lbl}${canDel?' ✕':''}</span>`;
+      }).join('')}</div>`
+    :`<p style="font-size:13px;color:var(--txt3)">Ningún día marcado este mes</p>`;
+}
+
+function toggleDay(k){
+  if(vacType==='extra'&&isWeekend(k)){toast('Los fines de semana no computan en vacaciones por horas extra','warning');return}
+  const i=selRange.indexOf(k);
+  if(i>=0){selRange.splice(i,1);}
+  else{
+    // Smart range fill: if already have selection and this is a new click, fill the gap
+    if(selRange.length>0&&vacType==='normal'){
+      const sorted=[...selRange].sort();
+      const first=sorted[0],last=sorted[sorted.length-1];
+      // If new day is outside current range, extend to fill all days in between
+      const newRange=[];
+      const start=k<first?parseDate(k):parseDate(first);
+      const end=k>last?parseDate(k):parseDate(last);
+      const cur=new Date(start);
+      while(cur<=end){
+        newRange.push(cur.toISOString().split('T')[0]);
+        cur.setDate(cur.getDate()+1);
+      }
+      selRange=newRange;
+    } else {
+      selRange.push(k);
+    }
+  }
+  selRange.sort();renderCalendar();
+}
+
+function prevMonth(){calState.month--;if(calState.month<0){calState.month=11;calState.year--;}renderCalendar()}
+function nextMonth(){calState.month++;if(calState.month>11){calState.month=0;calState.year++;}renderCalendar()}
+
+async function removeVacDay(k){
+  try{
+    await db.del('vacations',{'uid':'eq.'+ses.uid,'date':'eq.'+k});
+    cachedData.vacs=cachedData.vacs.filter(v=>!(v.uid===ses.uid&&v.date===k));
+    renderCalendar();toast('Día eliminado','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// openVacReqModal still used by modal but type comes from vacType global
+function openVacReqModal(type){
+  $('rv-type').value=type||vacType;
+  let preview=selRange.join(', ');
+  if((type||vacType)==='normal'&&selRange.length>=2){
+    const sorted=[...selRange].sort();
+    let count=0;const cur=new Date(parseDate(sorted[0]));const end=parseDate(sorted[sorted.length-1]);
+    while(cur<=end){count++;cur.setDate(cur.getDate()+1);}
+    preview=`${sorted[0]} → ${sorted[sorted.length-1]} (${count} días incl. fines de semana)`;
+  }
+  $('rv-days').textContent=preview||'(ninguno)';
+  $('rv-note').value='';
+  $('modal-vac-req').classList.remove('hidden');
+}
+
+async function submitVacReq(){
+  if(!selRange.length){toast('Selecciona al menos un día','error');return}
+  const type=$('rv-type').value||vacType;const note=$('rv-note').value;
+  const btn=$('btn-submit-vac');btn.disabled=true;
+  let daysToInsert=[...selRange];
+  if(type==='normal'&&selRange.length>=2){
+    const sorted=[...selRange].sort();
+    const start=parseDate(sorted[0]);const end=parseDate(sorted[sorted.length-1]);
+    daysToInsert=[];const cur=new Date(start);
+    while(cur<=end){daysToInsert.push(cur.toISOString().split('T')[0]);cur.setDate(cur.getDate()+1);}
+  }
+  try{
+    const vacInserts=daysToInsert.map(d=>({uid:ses.uid,date:d,vtype:'pending_'+type}));
+    await supa('POST','vacations',vacInserts,null);
+    const req=await db.post('vac_requests',{uid:ses.uid,days:daysToInsert,vtype:type,note,status:'pending'});
+    daysToInsert.forEach(d=>{
+      const existing=cachedData.vacs.find(v=>v.date===d&&v.uid===ses.uid);
+      if(existing)existing.vtype='pending_'+type;
+      else cachedData.vacs.push({uid:ses.uid,date:d,vtype:'pending_'+type});
+    });
+    cachedData.vacReqs.unshift(req[0]);
+    sendVacEmail(type,daysToInsert,note);
+    selRange=[];closeModals();renderCalendar();
+    toast(`Solicitud enviada — ${daysToInsert.length} días`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;}
+}
+
+async function sendVacEmail(type,days,note){
+  try{
+    if(!EMAILJS_KEY||EMAILJS_KEY==='TU_PUBLIC_KEY')return;
+    emailjs.init(EMAILJS_KEY);
+    const sorted=[...days].sort();
+    await emailjs.send(EMAILJS_SERVICE,EMAILJS_TEMPLATE,{
+      to_email:    ADMIN_EMAIL,
+      tecnico:     ses.user.name,
+      tipo:        type==='normal'?'Vacaciones anuales':'Vacaciones por horas extra',
+      num_dias:    days.length,
+      fecha_inicio:sorted[0],
+      fecha_fin:   sorted[sorted.length-1],
+      dias_lista:  sorted.slice(0,10).join(', ')+(days.length>10?'…':''),
+      nota:        note||'(sin nota)',
+      fecha_envio: new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}),
+    });
+    console.log('Email de notificación enviado');
+  }catch(e){console.warn('Email no enviado (revisa configuración EmailJS):',e);}
+}
+
+// ════════════════════════════════════════════════════════
+//  HOURS TABLE
+// ════════════════════════════════════════════════════════
+function initHoursFilter(){
+  const fy=$('fy');if(!fy||fy.options.length)return;
+  const yr=getCfg().year;
+  [yr-1,yr,yr+1].forEach(y=>{const o=document.createElement('option');o.value=y;o.textContent=y;if(y===yr)o.selected=true;fy.appendChild(o)});
+  const hs=$('h-start'),he=$('h-end');
+  if(hs){hs.addEventListener('change',updateHCalc);he.addEventListener('change',updateHCalc);}
+}
+
+function renderHoursTable(){
+  const cfg=getCfg();
+  const yr=+($('fy')?.value||cfg.year);const mo=$('fm')?.value;
+  let rows=cachedData.hours.filter(h=>!h.is_open&&h.end_time&&(()=>{const d=new Date(h.date);return d.getFullYear()===yr&&(mo===''||d.getMonth()===+mo)})());
+  const hc=$('h-count');if(hc)hc.textContent=`${rows.length} jornadas`;
+  const tb=$('hours-tbody');if(!tb)return;
+  tb.innerHTML=rows.map(h=>{
+    const s=h.start_time?.substring(0,5),e=h.end_time?.substring(0,5);
+    const ex=calcExtra(s,e,cfg.startH,cfg.endH);const hrs=calcHours(s,e);
+    return`<tr>
+      <td><strong>${h.date}</strong></td>
+      <td>${h.type==='travel'?'<span class="badge b-amber">Viaje</span>':'<span class="badge b-gray">Normal</span>'}</td>
+      <td>${s}</td><td>${e}</td><td>${hrs.toFixed(1)}h</td>
+      <td>${ex>0?`<span class="badge b-blue">+${ex.toFixed(1)}h</span>`:'—'}</td>
+      <td style="font-size:12px;color:var(--txt2)">${esc(h.dest||'')}</td>
+      <td style="font-size:12px;color:var(--txt3)">${h.km?h.km+'km':''}</td>
+      <td style="font-size:12px;color:var(--txt3)">${h.dietas?h.dietas+'€':''}</td>
+      <td style="font-size:12px;color:var(--txt3);max-width:130px">${esc(h.notes||'')}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteHour('${h.id}')">✕</button></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="11" style="color:var(--txt3);text-align:center;padding:2rem">Sin registros</td></tr>';
+}
+
+// ════════════════════════════════════════════════════════
+//  VAC TAB
+// ════════════════════════════════════════════════════════
+function renderVacTab(){
+  const cfg=getCfg();
+  const vTotal=normalVacTotal(),vUsed=normalVacUsed(),carry=normalVacCarryOver();
+  const eDays=totalExtraD(),eUsed=extraVacUsed(),eH=totalExtraH();
+  $('vac-summary').innerHTML=`
+    <div class="grid-2" style="margin-bottom:1rem">
+      <div class="card card-g"><div class="card-label">Vacaciones anuales</div><div class="card-val">${vUsed}<span> de ${vTotal}</span></div><div class="card-sub">${vTotal-vUsed} restantes${carry>0?` · ${carry} arrastrados`:''}</div></div>
+      <div class="card card-b"><div class="card-label">Por horas extra</div><div class="card-val">${eUsed}<span> de ${eDays}</span></div><div class="card-sub">${eH.toFixed(1)}h → ${eDays} días</div></div>
+    </div>
+    <div class="info-box ib-blue">Las <strong>vacaciones anuales</strong> cuentan todos los días (incl. fines de semana). Las <strong>por horas extra</strong> solo días laborables (L–V).</div>`;
+  const vacMap=getVacsFor();const allVac=Object.keys(vacMap).sort();
+  const lbls={normal:'Anual',extra:'Extra',pending_normal:'Pend. anual',pending_extra:'Pend. extra'};
+  const clss={normal:'b-green',extra:'b-blue',pending_normal:'b-amber',pending_extra:'b-amber'};
+  $('vac-tbody').innerHTML=allVac.map(k=>{
+    const t=vacMap[k];const we=isWeekend(k);const computa=(t==='normal')||(t==='extra'&&!we);
+    return`<tr><td><strong>${k}</strong></td><td>${getDayName(k)}</td><td><span class="badge ${clss[t]||'b-gray'}">${lbls[t]||t}</span></td>
+      <td>${t.startsWith('pending')?'<span class="badge b-amber">Pendiente</span>':'<span class="badge b-teal">Aprobado</span>'}</td>
+      <td>${computa&&!t.startsWith('pending')?'<span class="badge b-teal">Sí</span>':'<span class="badge b-gray">No</span>'}</td></tr>`;
+  }).join('')||'<tr><td colspan="5" style="color:var(--txt3);text-align:center;padding:2rem">Sin días marcados</td></tr>';
+  $('my-reqs').innerHTML=cachedData.vacReqs.map(r=>{
+    const sCls={pending:'b-amber',approved:'b-green',rejected:'b-red'}[r.status]||'b-gray';
+    const sLbl={pending:'Pendiente',approved:'Aprobada',rejected:'Rechazada'}[r.status]||r.status;
+    const days=Array.isArray(r.days)?r.days:(typeof r.days==='string'?JSON.parse(r.days):[]);
+    return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div><span class="badge ${r.vtype==='normal'?'b-green':'b-blue'}">${r.vtype==='normal'?'Anual':'Extra'}</span>
+        <span style="font-size:13px;margin-left:8px">${days.length} días</span>
+        <span style="font-size:11px;color:var(--txt3);margin-left:8px">${days.slice(0,3).join(', ')}${days.length>3?'…':''}</span></div>
+        <span class="badge ${sCls}">${sLbl}</span>
+      </div>
+      ${r.note?`<div style="font-size:12px;color:var(--txt2);margin-top:6px">${esc(r.note)}</div>`:''}
+    </div>`;
+  }).join('')||`<div class="empty-state"><p>Sin solicitudes enviadas</p></div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════
+function renderConfig(){
+  const cfg=getCfg();
+  $('cfg-year').value=cfg.year;$('cfg-vd').value=cfg.vacDays;
+  $('cfg-s').value=cfg.startH;$('cfg-e').value=cfg.endH;$('cfg-hpd').value=cfg.hPerVacDay;
+  renderPrevList();renderPrevVacList();
+}
+
+async function saveConfig(){
+  const btn=$('btn-save-cfg');btn.disabled=true;
+  try{
+    const cfg={
+      year:+$('cfg-year').value, vacDays:+$('cfg-vd').value,
+      startH:$('cfg-s').value, endH:$('cfg-e').value, hPerVacDay:+$('cfg-hpd').value
+    };
+    await db.patch('users',{cfg},{'uid':'eq.'+ses.uid});
+    ses.user.cfg=cfg;$('tb-year').textContent=cfg.year;
+    toast('Configuración guardada','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;}
+}
+
+function renderPrevList(){
+  const el=$('prev-list');if(!el)return;
+  const prev=cachedData.prevYears;
+  if(!prev.length){el.innerHTML=`<p style="font-size:13px;color:var(--txt3)">Sin años anteriores</p>`;return}
+  el.innerHTML=prev.map((p,i)=>`
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">
+      <span style="font-size:14px;font-weight:600;min-width:44px">${p.year}</span>
+      <input type="number" value="${p.hours}" style="width:90px" min="0" step="0.5"
+        onchange="updatePrevYear('${p.id}',+this.value,${i})">
+      <span style="font-size:12px;color:var(--txt2)">${Math.floor((+p.hours||0)/getCfg().hPerVacDay)} días</span>
+      <button class="btn btn-sm btn-danger" onclick="deletePrevYear('${p.id}',${i})">✕</button>
+    </div>`).join('');
+}
+
+async function updatePrevYear(id,hours,idx){
+  try{
+    await db.patch('prev_years',{hours},{'id':'eq.'+id});
+    cachedData.prevYears[idx].hours=hours;
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function deletePrevYear(id,idx){
+  try{
+    await db.del('prev_years',{'id':'eq.'+id});
+    cachedData.prevYears.splice(idx,1);renderPrevList();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function addPrevYear(){
+  const y=getCfg().year-1;
+  if(cachedData.prevYears.find(p=>p.year===y)){toast('Ese año ya existe','error');return}
+  try{
+    const rec=await db.post('prev_years',{uid:ses.uid,year:y,hours:0});
+    cachedData.prevYears.unshift(rec[0]);renderPrevList();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ── PREV VACATION DAYS (días de vacaciones anuales arrastrados) ──
+function renderPrevVacList(){
+  const el=$('prev-vac-list');if(!el)return;
+  const prev=cachedData.prevVacDays||[];
+  if(!prev.length){el.innerHTML=`<p style="font-size:13px;color:var(--txt3)">Sin días arrastrados de años anteriores</p>`;return}
+  el.innerHTML=prev.map((p,i)=>`
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">
+      <span style="font-size:14px;font-weight:600;min-width:44px">${p.year}</span>
+      <input type="number" value="${p.days}" style="width:80px" min="0" step="1"
+        onchange="updatePrevVacYear('${p.id}',+this.value,${i})">
+      <span style="font-size:12px;color:var(--txt2)">días pendientes de disfrutar</span>
+      <button class="btn btn-sm btn-danger" onclick="deletePrevVacYear('${p.id}',${i})">✕</button>
+    </div>`).join('');
+}
+
+async function updatePrevVacYear(id,days,idx){
+  try{
+    await db.patch('prev_vac_days',{days},{'id':'eq.'+id});
+    cachedData.prevVacDays[idx].days=days;
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function deletePrevVacYear(id,idx){
+  try{
+    await db.del('prev_vac_days',{'id':'eq.'+id});
+    cachedData.prevVacDays.splice(idx,1);renderPrevVacList();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function addPrevVacYear(){
+  const y=getCfg().year-1;
+  if(!cachedData.prevVacDays)cachedData.prevVacDays=[];
+  if(cachedData.prevVacDays.find(p=>p.year===y)){toast('Ese año ya existe','error');return}
+  try{
+    const rec=await db.post('prev_vac_days',{uid:ses.uid,year:y,days:0});
+    cachedData.prevVacDays.unshift(rec[0]);renderPrevVacList();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ════════════════════════════════════════════════════════
+//  HOURS MODAL
+// ════════════════════════════════════════════════════════
+function setHType(t){
+  $('h-type').value=t;
+  document.querySelectorAll('.type-btn').forEach((btn,i)=>btn.classList.toggle('active',i===(t==='normal'?0:1)));
+  $('travel-extra').classList.toggle('hidden',t!=='travel');
+  updateHCalc();
+}
+
+function openAddHours(type='normal',isClockIn=false){
+  $('mh-title').textContent=isClockIn?'Fichar entrada con desplazamiento':'Añadir jornada';
+  $('h-date').value=todayISO();
+  const cfg=getCfg();
+  $('h-start').value=isClockIn?nowHHMM():cfg.startH;
+  $('h-end').value=isClockIn?'':cfg.endH;
+  $('h-notes').value='';$('h-dest').value='';$('h-dep').value='';
+  $('h-arr').value='';$('h-km').value='';$('h-dietas').value='';
+  $('h-edit-id').value='';
+  setHType(type);updateHCalc();
+  $('modal-hours').dataset.clockin=isClockIn?'1':'0';
+  $('modal-hours').classList.remove('hidden');
+}
+
+function updateHCalc(){
+  const s=$('h-start')?.value,e=$('h-end')?.value;const cfg=getCfg();
+  if(!$('h-calc'))return;
+  if(!s||!e){$('h-calc').innerHTML='Completa inicio y fin para ver el cálculo';return}
+  if(timeToMin(e)<=timeToMin(s)){$('h-calc').innerHTML='⚠ El fin debe ser posterior al inicio';return}
+  const hrs=calcHours(s,e);const ex=calcExtra(s,e,cfg.startH,cfg.endH);
+  $('h-calc').innerHTML=`Horas: <strong>${hrs.toFixed(2)}h</strong> &nbsp;·&nbsp; Extra: <strong style="color:${ex>0?'var(--blue)':'var(--txt3)'}">${ex.toFixed(2)}h</strong>`;
+}
+
+async function saveHours(){
+  const d=$('h-date').value,s=$('h-start').value,e=$('h-end').value;
+  const t=$('h-type').value,n=$('h-notes').value;
+  const isClockIn=$('modal-hours').dataset.clockin==='1';
+  if(!d||!s){toast('Fecha e inicio son obligatorios','error');return}
+  if(!isClockIn&&!e){toast('Indica la hora de fin','error');return}
+  if(e&&timeToMin(e)<=timeToMin(s)){toast('El fin debe ser posterior al inicio','error');return}
+  const body={uid:ses.uid,date:d,start_time:s,end_time:e||null,type:t,notes:n,is_open:isClockIn};
+  if(t==='travel'){
+    body.dest=$('h-dest').value;body.dep_home=$('h-dep').value||null;
+    body.arr_home=$('h-arr').value||null;body.km=+$('h-km').value||0;
+    body.dietas=+$('h-dietas').value||0;
+  }
+  const btn=$('btn-save-hours');btn.disabled=true;
+  try{
+    const editId=$('h-edit-id').value;
+    if(editId){
+      await db.patch('hours',body,{'id':'eq.'+editId});
+      const idx=cachedData.hours.findIndex(h=>h.id===editId);
+      if(idx>=0)cachedData.hours[idx]={...cachedData.hours[idx],...body};
+    } else {
+      const rec=await db.post('hours',body);
+      cachedData.hours.unshift(rec[0]);
+    }
+    closeModals();toast('Jornada guardada','success');
+    renderHoursTable();refreshClockStatus();renderFicharRecent();
+  }catch(e){toast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;}
+}
+
+async function deleteHour(id){
+  if(!confirm('¿Eliminar esta jornada?'))return;
+  try{
+    await db.del('hours',{'id':'eq.'+id});
+    cachedData.hours=cachedData.hours.filter(h=>h.id!==id);
+    renderHoursTable();renderFicharRecent();refreshClockStatus();
+    toast('Jornada eliminada','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ════════════════════════════════════════════════════════
+//  CSV IMPORT
+// ════════════════════════════════════════════════════════
+function openImportCSV(){
+  const ci=$('csv-in'),cp=$('csv-prev');
+  if(!ci)return;
+  ci.value='';if(cp)cp.textContent='';
+  ci.oninput=function(){
+    const lines=this.value.trim().split('\n').filter(l=>l.trim()&&!/^(fecha|date|dia)/i.test(l.split(/[,;]/)[0].replace(/['"]/g,'')));
+    if(cp)cp.textContent=lines.length?`${lines.length} jornadas detectadas`:'';
+  };
+  $('modal-csv').classList.remove('hidden');
+  setTimeout(()=>ci.focus(),100);
+}
+
+function parseCSVDate(f){
+  if(!f)return null;
+  f=f.trim().replace(/^["']|["']$/g,''); // strip surrounding quotes
+  // dd/mm/yy — 2-digit year (primary format: "01/04/26")
+  if(f.match(/^\d{1,2}\/\d{1,2}\/\d{2}$/)){
+    const[dd,mm,yy]=f.split('/');
+    return`20${yy.padStart(2,'0')}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  }
+  // dd-mm-yy
+  if(f.match(/^\d{1,2}-\d{1,2}-\d{2}$/)){
+    const[dd,mm,yy]=f.split('-');
+    return`20${yy.padStart(2,'0')}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  }
+  // dd/mm/yyyy or dd-mm-yyyy
+  if(f.match(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/)){
+    const sep=f.includes('/')?'/':'-';const parts=f.split(sep);
+    return`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  }
+  // yyyy-mm-dd
+  if(f.match(/^\d{4}-\d{2}-\d{2}$/))return f;
+  return null;
+}
+
+function parseCSVTime(t){
+  if(!t)return null;
+  t=t.trim().replace(/^["']|["']$/g,'');
+  // H:MM or HH:MM or HH:MM:SS
+  const m=t.match(/^(\d{1,2}):(\d{2})/);
+  if(m)return String(m[1]).padStart(2,'0')+':'+m[2];
+  return null;
+}
+
+async function importCSV(){
+  const raw=$('csv-in')?.value.trim();
+  if(!raw){closeModals();return}
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const toInsert=[];let skipped=0;
+  lines.forEach((line,i)=>{
+    // Skip header rows
+    if(/^(fecha|date|dia)/i.test(line.replace(/^["']|["']$/g,'').split(/[,;]/)[0].replace(/['"]/g,'')))return;
+    const sep=line.includes(';')?';':',';
+    // Split respecting quoted fields
+    const parts=[];let cur='';let inQ=false;
+    for(const ch of line){
+      if(ch==='"'||ch==="'"){inQ=!inQ;}
+      else if(ch===sep&&!inQ){parts.push(cur.trim());cur='';}
+      else cur+=ch;
+    }
+    parts.push(cur.trim());
+    if(parts.length<3){skipped++;return}
+    const dk=parseCSVDate(parts[0]);if(!dk){skipped++;return}
+    const ini=parseCSVTime(parts[1]);const fin=parseCSVTime(parts[2]);
+    if(!ini||!fin){skipped++;return}
+    if(timeToMin(fin)<=timeToMin(ini)){skipped++;return}
+    // Column 4 = horas (ignored, we recalculate), column 5 = notas
+    const notas=parts.length>4?parts[4].replace(/^["']|["']$/g,'').trim():
+                parts.length>3?'':''; // column 3 might be notas if no hours column
+    toInsert.push({uid:ses.uid,date:dk,start_time:ini,end_time:fin,type:'normal',notes:notas,is_open:false});
+  });
+  if(!toInsert.length){toast(`Sin jornadas válidas (${skipped} omitidas)`,'error');return}
+  const btn=$('btn-import');btn.disabled=true;
+  try{
+    const recs=await db.post('hours',toInsert);
+    cachedData.hours=[...recs,...cachedData.hours].sort((a,b)=>b.date.localeCompare(a.date));
+    closeModals();renderHoursTable();
+    toast(`✓ ${toInsert.length} jornadas importadas${skipped?` (${skipped} omitidas)`:''}`, 'success');
+  }catch(e){toast('Error importando: '+e.message,'error');}
+  finally{btn.disabled=false;}
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN: TEAM
+// ════════════════════════════════════════════════════════
+function renderAdminTeam(){
+  const el=$('team-list');if(!el)return;
+  const yr=+($('af-year')?.value||new Date().getFullYear());
+  const active=(cachedData.users||[]).filter(u=>u.status==='active');
+  if(!active.length){el.innerHTML=`<div class="empty-state"><p>Sin empleados activos</p></div>`;return}
+  el.innerHTML=active.map(u=>{
+    const allH=(cachedData.allHours||[]).filter(h=>h.uid===u.uid&&!h.is_open&&h.end_time&&new Date(h.date).getFullYear()===yr);
+    const cfg2=u.cfg||{vacDays:30,hPerVacDay:7,startH:'08:00',endH:'15:00'};
+    const eH=totalExtraH(u.uid);const eDays=totalExtraD(u.uid);
+    const vUsed=normalVacUsed(u.uid);const eUsed=extraVacUsed(u.uid);
+    const rCls={super:'b-orange',admin:'b-blue',tech:'b-gray'}[u.role]||'b-gray';
+    const initials=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return`<div class="emp-card">
+      <div class="emp-av">${initials}</div>
+      <div class="emp-info">
+        <div class="emp-name">${esc(u.name)} <span class="badge ${rCls}" style="margin-left:6px;font-size:9px">${u.role}</span></div>
+        <div class="emp-meta">@${esc(u.username)}</div>
+        <div class="emp-stats">
+          <span class="emp-stat">Jornadas: <strong>${allH.length}</strong></span>
+          <span class="emp-stat">Extra: <strong>${eH.toFixed(1)}h</strong></span>
+          <span class="emp-stat">Vac. anual: <strong>${vUsed}/${cfg2.vacDays}</strong></span>
+          <span class="emp-stat">Vac. extra: <strong>${eUsed}/${eDays}</strong></span>
+        </div>
+      </div>
+      <div class="emp-actions"><button class="btn btn-sm" onclick="viewEmpDetail('${u.uid}')">Ver detalle</button></div>
+    </div>`;
+  }).join('');
+}
+
+function viewEmpDetail(uid_){
+  const u=(cachedData.users||[]).find(u=>u.uid===uid_);if(!u)return;
+  const cfg2=u.cfg||{startH:'08:00',endH:'15:00',vacDays:30,hPerVacDay:7};
+  const hours=(cachedData.allHours||[]).filter(h=>h.uid===uid_&&!h.is_open&&h.end_time).sort((a,b)=>b.date.localeCompare(a.date));
+  const eH=totalExtraH(uid_);const eDays=totalExtraD(uid_);
+  const vUsed=normalVacUsed(uid_);const eUsed=extraVacUsed(uid_);
+  const km=hours.reduce((a,h)=>a+(h.km||0),0);const dietas=hours.reduce((a,h)=>a+(h.dietas||0),0);
+  $('me-title').textContent=u.name;
+  $('me-body').innerHTML=`
+    <div class="cards" style="margin-bottom:1rem">
+      <div class="card card-g"><div class="card-label">Vac. anuales</div><div class="card-val">${vUsed}<span>/${cfg2.vacDays}</span></div></div>
+      <div class="card card-b"><div class="card-label">Vac. extra</div><div class="card-val">${eUsed}<span>/${eDays}</span></div></div>
+      <div class="card card-a"><div class="card-label">Horas extra</div><div class="card-val">${eH.toFixed(1)}<span>h</span></div></div>
+      <div class="card card-p"><div class="card-label">Km totales</div><div class="card-val">${km}<span>km</span></div></div>
+    </div>
+    ${dietas>0?`<div class="info-box ib-amber" style="margin-bottom:1rem">Dietas acumuladas: <strong>${dietas.toFixed(2)} €</strong></div>`:''}
+    <div style="max-height:360px;overflow-y:auto"><div class="tbl-wrap"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Extra</th><th>Destino</th><th>Km</th></tr></thead>
+      <tbody>${hours.slice(0,40).map(h=>{
+        const s=h.start_time?.substring(0,5),e=h.end_time?.substring(0,5);
+        const hrs=calcHours(s,e);const ex=calcExtra(s,e,cfg2.startH,cfg2.endH);
+        return`<tr><td><strong>${h.date}</strong></td><td>${h.type==='travel'?'<span class="badge b-amber">Viaje</span>':'<span class="badge b-gray">Normal</span>'}</td>
+          <td>${s}</td><td>${e}</td><td>${hrs.toFixed(1)}h</td>
+          <td>${ex>0?`<span class="badge b-blue">+${ex.toFixed(1)}h</span>`:'—'}</td>
+          <td style="font-size:12px">${esc(h.dest||'')}</td><td style="font-size:12px">${h.km?h.km+'km':''}</td></tr>`;
+      }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--txt3);padding:1.5rem">Sin jornadas</td></tr>'}
+      </tbody>
+    </table></div></div>`;
+  $('modal-emp').classList.remove('hidden');
+}
+
+function exportCSV(){
+  const yr=+($('af-year')?.value||new Date().getFullYear());
+  let csv='Nombre,Usuario,Fecha,Tipo,Entrada,Salida,Horas,HorasExtra,Destino,SalidaCasa,LlegadaCasa,Km,Dietas,Notas\n';
+  (cachedData.users||[]).filter(u=>u.status==='active').forEach(u=>{
+    const cfg2=u.cfg||{startH:'08:00',endH:'15:00'};
+    (cachedData.allHours||[]).filter(h=>h.uid===u.uid&&!h.is_open&&h.end_time&&new Date(h.date).getFullYear()===yr).forEach(h=>{
+      const s=h.start_time?.substring(0,5),e=h.end_time?.substring(0,5);
+      const hrs=calcHours(s,e);const ex=calcExtra(s,e,cfg2.startH,cfg2.endH);
+      csv+=`"${u.name}","${u.username}","${h.date}","${h.type}","${s}","${e}","${hrs.toFixed(2)}","${ex.toFixed(2)}","${h.dest||''}","${h.dep_home||''}","${h.arr_home||''}","${h.km||0}","${h.dietas||0}","${h.notes||''}"\n`;
+    });
+  });
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`equipo_${yr}.csv`;a.click();toast('CSV exportado','success');
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN: VAC REQUESTS
+// ════════════════════════════════════════════════════════
+function renderAdminVac(){
+  const el=$('admin-vac-list');if(!el)return;
+  const allReqs=cachedData.allVacReqs||[];
+  const pending=allReqs.filter(r=>r.status==='pending');
+  const history=allReqs.filter(r=>r.status!=='pending').slice(0,15);
+  if(!pending.length&&!history.length){el.innerHTML=`<div class="empty-state"><div class="icon">✅</div><p>Sin solicitudes pendientes</p></div>`;return}
+  let html='';
+  if(pending.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Pendientes (${pending.length})</div>`;
+    html+=pending.map(r=>{
+      const u=(cachedData.users||[]).find(u=>u.uid===r.uid);
+      const days=Array.isArray(r.days)?r.days:(typeof r.days==='string'?JSON.parse(r.days):[]);
+      return`<div class="vac-req">
+        <div class="vac-req-info">
+          <div class="vac-req-name">${esc(u?.name||'?')} <span class="badge ${r.vtype==='normal'?'b-green':'b-blue'}">${r.vtype==='normal'?'Anual':'Extra'}</span></div>
+          <div class="vac-req-det">${days.length} días: ${days.slice(0,5).join(', ')}${days.length>5?'…':''}${r.note?` — "${esc(r.note)}"`:''}</div>
+        </div>
+        <div class="vac-req-acts">
+          <button class="btn btn-sm btn-success" onclick="resolveVac('${r.id}','approved','${r.uid}','${r.vtype}')">✓ Aprobar</button>
+          <button class="btn btn-sm btn-danger" onclick="resolveVac('${r.id}','rejected','${r.uid}','${r.vtype}')">✕ Rechazar</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if(history.length){
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin:1.25rem 0 10px">Historial reciente</div>`;
+    html+=history.map(r=>{
+      const u=(cachedData.users||[]).find(u=>u.uid===r.uid);
+      const days=Array.isArray(r.days)?r.days:(typeof r.days==='string'?JSON.parse(r.days):[]);
+      const sCls={approved:'b-green',rejected:'b-red'}[r.status]||'b-gray';
+      return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div><strong>${esc(u?.name||'?')}</strong> — ${days.length} días <span class="badge ${r.vtype==='normal'?'b-green':'b-blue'}" style="margin-left:6px">${r.vtype==='normal'?'Anual':'Extra'}</span></div>
+        <span class="badge ${sCls}">${r.status==='approved'?'Aprobada':'Rechazada'}</span>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML=html;
+}
+
+async function resolveVac(reqId, status, vacUid, vtype){
+  try{
+    const req=(cachedData.allVacReqs||[]).find(r=>r.id===reqId);if(!req)return;
+    const days=Array.isArray(req.days)?req.days:(typeof req.days==='string'?JSON.parse(req.days):[]);
+    await db.patch('vac_requests',{status},{'id':'eq.'+reqId});
+    req.status=status;
+    if(status==='approved'){
+      // Update each vacation day: change pending_X to X
+      for(const d of days){
+        await db.patch('vacations',{vtype},{uid:'eq.'+vacUid,'date':'eq.'+d});
+      }
+      toast('Vacaciones aprobadas','success');
+    } else {
+      // Delete pending vacation days
+      for(const d of days){
+        await db.del('vacations',{'uid':'eq.'+vacUid,'date':'eq.'+d});
+      }
+      toast('Solicitud rechazada','warning');
+    }
+    renderAdminVac();
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ════════════════════════════════════════════════════════
+//  ADMIN: PENDING USERS
+// ════════════════════════════════════════════════════════
+function renderAdminPending(){
+  const el=$('pending-list');if(!el)return;
+  const pending=cachedData.pendingUsers||[];
+  if(!pending.length){el.innerHTML=`<div class="empty-state"><div class="icon">🔔</div><p>Sin nuevas solicitudes de registro</p></div>`;return}
+  el.innerHTML=`<div class="info-box ib-amber">Estos técnicos se han registrado y esperan activación.</div>
+    ${pending.map(u=>`<div class="pending-user">
+      <div class="pu-info">
+        <div class="pu-name">${esc(u.name)}</div>
+        <div class="pu-meta">@${esc(u.username)} · ${new Date(u.created_at).toLocaleDateString('es-ES')}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-success" onclick="activateUser('${u.uid}','${esc(u.name)}')">✓ Activar</button>
+        <button class="btn btn-sm btn-danger" onclick="rejectUser('${u.uid}','${esc(u.name)}')">✕ Rechazar</button>
+      </div>
+    </div>`).join('')}`;
+}
+
+async function activateUser(uid_,name){
+  try{
+    await db.patch('users',{status:'active'},{'uid':'eq.'+uid_});
+    cachedData.pendingUsers=(cachedData.pendingUsers||[]).filter(u=>u.uid!==uid_);
+    renderAdminPending();toast(`${name} activado correctamente`,'success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function rejectUser(uid_,name){
+  if(!confirm(`¿Rechazar y eliminar la cuenta de "${name}"?`))return;
+  try{
+    await db.del('users',{'uid':'eq.'+uid_});
+    cachedData.pendingUsers=(cachedData.pendingUsers||[]).filter(u=>u.uid!==uid_);
+    renderAdminPending();toast('Solicitud rechazada','warning');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ════════════════════════════════════════════════════════
+//  SUPER: USERS
+// ════════════════════════════════════════════════════════
+function renderSuperUsers(){
+  const el=$('super-list');if(!el)return;
+  const statusCls={active:'b-green',pending:'b-amber',disabled:'b-gray'};
+  const statusLbl={active:'Activo',pending:'Pendiente',disabled:'Desactivado'};
+  const roleCls={super:'b-orange',admin:'b-blue',tech:'b-gray'};
+  el.innerHTML=(cachedData.users||[]).map(u=>`
+    <div class="emp-card">
+      <div class="emp-av">${u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>
+      <div class="emp-info">
+        <div class="emp-name">${esc(u.name)}
+          <span class="badge ${roleCls[u.role]||'b-gray'}" style="margin-left:6px;font-size:9px">${u.role}</span>
+          <span class="badge ${statusCls[u.status]||'b-gray'}" style="margin-left:4px;font-size:9px">${statusLbl[u.status]||u.status}</span>
+        </div>
+        <div class="emp-meta">@${esc(u.username)} · ${new Date(u.created_at).toLocaleDateString('es-ES')}</div>
+      </div>
+      <div class="emp-actions">
+        <button class="btn btn-sm" onclick="openEditUser('${u.uid}')">Editar</button>
+        ${u.uid!==ses.uid?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.uid}','${esc(u.name)}')">Eliminar</button>`:'<span style="font-size:11px;color:var(--txt3)">Tú</span>'}
+      </div>
+    </div>`).join('');
+  // Populate danger zone select (exclude current super)
+  const sel=$('danger-uid');
+  if(sel){
+    const others=(cachedData.users||[]).filter(u=>u.uid!==ses.uid);
+    sel.innerHTML='<option value="">— elige usuario —</option>'+
+      others.map(u=>`<option value="${u.uid}">${esc(u.name)} (@${esc(u.username)})</option>`).join('');
+  }
+}
+
+// ── CHANGE PASSWORD (any user from their own config) ──
+async function changePassword(){
+  const current=$('pw-current').value;
+  const newPw=$('pw-new').value;
+  const confirm=$('pw-confirm').value;
+  const errEl=$('pw-err');
+  errEl.style.display='none';
+  if(!current||!newPw||!confirm){errEl.textContent='Rellena todos los campos';errEl.style.display='block';return}
+  if(hashPw(current)!==ses.user.password){errEl.textContent='La contraseña actual no es correcta';errEl.style.display='block';return}
+  if(newPw.length<4){errEl.textContent='La nueva contraseña debe tener mínimo 4 caracteres';errEl.style.display='block';return}
+  if(newPw!==confirm){errEl.textContent='Las contraseñas nuevas no coinciden';errEl.style.display='block';return}
+  const btn=$('btn-save-pw');btn.disabled=true;
+  try{
+    const hashed=hashPw(newPw);
+    await db.patch('users',{password:hashed},{'uid':'eq.'+ses.uid});
+    ses.user.password=hashed;
+    $('pw-current').value='';$('pw-new').value='';$('pw-confirm').value='';
+    toast('Contraseña cambiada correctamente','success');
+  }catch(e){errEl.textContent='Error: '+e.message;errEl.style.display='block';}
+  finally{btn.disabled=false;}
+}
+
+// ── SUPER: WIPE USER DATA ──
+async function superClearUserData(){
+  const uid_=$('danger-uid').value;
+  if(!uid_){toast('Selecciona un usuario primero','error');return}
+  const u=(cachedData.users||[]).find(u=>u.uid===uid_);
+  if(!confirm(`¿Borrar TODOS los datos de "${u?.name}"?\n\nSe eliminarán:\n• Todas sus jornadas\n• Todos sus días de vacaciones\n• Todas sus solicitudes\n• Sus horas de años anteriores\n\nSu cuenta permanecerá activa. Esta acción NO se puede deshacer.`))return;
+  try{
+    // Delete in parallel
+    await Promise.all([
+      db.del('hours',       {'uid':'eq.'+uid_}),
+      db.del('vacations',   {'uid':'eq.'+uid_}),
+      db.del('vac_requests',{'uid':'eq.'+uid_}),
+      db.del('prev_years',  {'uid':'eq.'+uid_}),
+    ]);
+    toast(`Datos de ${u?.name} eliminados correctamente`,'success');
+    $('danger-uid').value='';
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+function openCreateUser(){
+  $('mu-uid').value='';$('mu-name').value='';$('mu-username').value='';
+  $('mu-pass').value='';$('mu-role').value='tech';$('mu-vacdays').value='30';
+  $('mu-title').textContent='Crear usuario';$('mu-err').style.display='none';
+  $('modal-user').classList.remove('hidden');
+}
+function openEditUser(uid_){
+  const u=(cachedData.users||[]).find(u=>u.uid===uid_);if(!u)return;
+  $('mu-uid').value=uid_;$('mu-name').value=u.name;$('mu-username').value=u.username;
+  $('mu-pass').value='';$('mu-role').value=u.role;$('mu-vacdays').value=u.cfg?.vacDays||30;
+  $('mu-title').textContent='Editar: '+u.name;$('mu-err').style.display='none';
+  $('modal-user').classList.remove('hidden');
+}
+
+async function saveUserModal(){
+  const uid_=$('mu-uid').value;
+  const name=$('mu-name').value.trim();const username=$('mu-username').value.trim().toLowerCase();
+  const pass=$('mu-pass').value;const role=$('mu-role').value;const vacdays=+$('mu-vacdays').value||30;
+  if(!name||!username){$('mu-err').textContent='Nombre y usuario obligatorios';$('mu-err').style.display='block';return}
+  const btn=$('btn-save-user');btn.disabled=true;
+  try{
+    if(uid_){
+      const upd={name,username,role,status:'active'};
+      // Update cfg vacDays
+      const u=(cachedData.users||[]).find(u=>u.uid===uid_);
+      if(u){const cfg2={...u.cfg,vacDays:vacdays};upd.cfg=cfg2;}
+      if(pass.length>=4)upd.password=hashPw(pass);
+      else if(pass.length>0&&pass.length<4){$('mu-err').textContent='Mínimo 4 caracteres';$('mu-err').style.display='block';btn.disabled=false;return}
+      await db.patch('users',upd,{'uid':'eq.'+uid_});
+      const idx=(cachedData.users||[]).findIndex(u=>u.uid===uid_);
+      if(idx>=0)cachedData.users[idx]={...cachedData.users[idx],...upd};
+      toast('Usuario actualizado','success');
+    } else {
+      const exists=await db.get('users',{'username':'eq.'+username,'select':'uid'});
+      if(exists.length){$('mu-err').textContent='Ese usuario ya existe';$('mu-err').style.display='block';btn.disabled=false;return}
+      if(!pass||pass.length<4){$('mu-err').textContent='Contraseña mínimo 4 caracteres';$('mu-err').style.display='block';btn.disabled=false;return}
+      const rec=await db.post('users',{
+        uid:uid(),name,username,password:hashPw(pass),role,status:'active',
+        cfg:{year:new Date().getFullYear(),startH:'08:00',endH:'15:00',vacDays:vacdays,hPerVacDay:7}
+      });
+      (cachedData.users=cachedData.users||[]).unshift(rec[0]);
+      toast('Usuario creado','success');
+    }
+    closeModals();renderSuperUsers();
+  }catch(e){$('mu-err').textContent='Error: '+e.message;$('mu-err').style.display='block';}
+  finally{btn.disabled=false;}
+}
+
+async function deleteUser(uid_,name){
+  if(uid_===ses.uid){toast('No puedes eliminarte a ti mismo','error');return}
+  if(!confirm(`¿Eliminar a "${name}"? Se borrarán todos sus datos.`))return;
+  try{
+    await db.del('users',{'uid':'eq.'+uid_});
+    cachedData.users=(cachedData.users||[]).filter(u=>u.uid!==uid_);
+    renderSuperUsers();toast('Usuario eliminado','success');
+  }catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ════════════════════════════════════════════════════════
+//  MODALS
+// ════════════════════════════════════════════════════════
+function closeModals(){qa('.modal-overlay').forEach(m=>m.classList.add('hidden'))}
+qa('.modal-overlay').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)closeModals()}));
+$('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+$('l-user').addEventListener('keydown',e=>{if(e.key==='Enter')$('l-pass').focus()});
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+restoreSession();
+</script>
+</body>
+</html>
