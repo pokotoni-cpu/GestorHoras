@@ -411,8 +411,8 @@ textarea.csv-ta{width:100%;font-family:'DM Mono',monospace;font-size:12px;paddin
 //  ⚙️  CONFIGURACIÓN SUPABASE
 //  Reemplaza estos dos valores con los de tu proyecto
 // ════════════════════════════════════════════════════════
-const SUPA_URL = 'https://ldazhwzhzzuurxshnblt.supabase.co';   // ← Project URL
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkYXpod3poenp1dXJ4c2huYmx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzM5NzUsImV4cCI6MjA5MTE0OTk3NX0.oGHTb0gr8xexFM_PKuOVpcUXcO-vb4IfjclCu6Dr5l8';                  // ← anon public key
+const SUPA_URL = 'https://TU_PROJECT_ID.supabase.co';   // ← Project URL
+const SUPA_KEY = 'TU_ANON_PUBLIC_KEY';                  // ← anon public key
 
 // Email del jefe/admin que recibirá notificaciones de vacaciones
 // Usa EmailJS (gratis) — regístrate en emailjs.com y rellena estos valores
@@ -662,27 +662,39 @@ function doLogout(){
 //  NAVIGATION
 // ════════════════════════════════════════════════════════
 const NAV_TECH=[
-  {id:'fichar',   icon:'⏱', label:'Fichar',        sec:'Mi jornada'},
-  {id:'dashboard',icon:'📊', label:'Resumen'},
-  {id:'calendar', icon:'📅', label:'Calendario'},
-  {id:'hours',    icon:'📋', label:'Mis jornadas'},
-  {id:'vacaciones',icon:'🏖',label:'Vacaciones'},
-  {id:'config',   icon:'⚙️', label:'Ajustes',       sec:'Cuenta'},
+  {id:'fichar',    icon:'⏱', label:'Fichar',       sec:'Mi jornada'},
+  {id:'dashboard', icon:'📊', label:'Resumen'},
+  {id:'calendar',  icon:'📅', label:'Calendario'},
+  {id:'hours',     icon:'📋', label:'Mis jornadas'},
+  {id:'vacaciones',icon:'🏖', label:'Vacaciones'},
+  {id:'config',    icon:'⚙️', label:'Ajustes',      sec:'Cuenta'},
 ];
 const NAV_ADMIN=[
-  {id:'admin-team',   icon:'👥',label:'Mi equipo',         sec:'Administración'},
-  {id:'admin-vac',    icon:'✅',label:'Solicitudes vac.'},
-  {id:'admin-pending',icon:'🔔',label:'Nuevos usuarios'},
+  {id:'admin-team',   icon:'👥', label:'Mi equipo',        sec:'Administración'},
+  {id:'admin-vac',    icon:'✅', label:'Solicitudes vac.'},
+  {id:'admin-pending',icon:'🔔', label:'Nuevos usuarios'},
+  {id:'admin-config', icon:'⚙️', label:'Mi cuenta',        sec:'Cuenta'},
 ];
 const NAV_SUPER=[
-  {id:'super-users',icon:'🔐',label:'Usuarios',sec:'Superusuario'},
+  {id:'fichar',    icon:'⏱', label:'Fichar',       sec:'Mi jornada'},
+  {id:'dashboard', icon:'📊', label:'Resumen'},
+  {id:'calendar',  icon:'📅', label:'Calendario'},
+  {id:'hours',     icon:'📋', label:'Mis jornadas'},
+  {id:'vacaciones',icon:'🏖', label:'Vacaciones'},
+  {id:'config',    icon:'⚙️', label:'Ajustes',      sec:'Cuenta'},
+  {id:'admin-team',   icon:'👥', label:'Mi equipo',        sec:'Administración'},
+  {id:'admin-vac',    icon:'✅', label:'Solicitudes vac.'},
+  {id:'admin-pending',icon:'🔔', label:'Nuevos usuarios'},
+  {id:'super-users',  icon:'🔐', label:'Usuarios',          sec:'Superusuario'},
 ];
 
 function buildUI(){
   const r=ses.role;
-  let pages=[...NAV_TECH];
-  if(r==='admin'||r==='super') pages=[...pages,...NAV_ADMIN];
-  if(r==='super') pages=[...pages,...NAV_SUPER];
+  // Each role gets its own nav — admin does NOT get tech pages
+  const pages = r==='admin' ? NAV_ADMIN
+              : r==='super'  ? NAV_SUPER
+              : NAV_TECH;
+
   let shtml='';let lastSec='';
   pages.forEach(p=>{
     if(p.sec&&p.sec!==lastSec){shtml+=`<div class="nav-group"><div class="nav-label">${p.sec}</div></div>`;lastSec=p.sec;}
@@ -691,13 +703,24 @@ function buildUI(){
   });
   $('sidebar').innerHTML=shtml;
   $('mob-nav').innerHTML=pages.slice(0,6).map(p=>`<button class="mob-tab" id="mob-${p.id}" onclick="showPage('${p.id}')">${p.icon} ${p.label}</button>`).join('');
+
+  // Build only the pages needed for this role
   let html='';
-  html+=tplFichar()+tplDashboard()+tplCalendar()+tplHours()+tplVacaciones()+tplConfig();
-  if(r==='admin'||r==='super') html+=tplAdminTeam()+tplAdminVac()+tplAdminPending();
-  if(r==='super') html+=tplSuperUsers();
+  if(r==='admin'){
+    html+=tplAdminTeam()+tplAdminVac()+tplAdminPending()+tplAdminConfig();
+  } else {
+    // tech and super get all tech pages
+    html+=tplFichar()+tplDashboard()+tplCalendar()+tplHours()+tplVacaciones()+tplConfig();
+    if(r==='super'){
+      html+=tplAdminTeam()+tplAdminVac()+tplAdminPending()+tplSuperUsers();
+    }
+  }
   $('main-content').innerHTML=html;
-  initHoursFilter();
-  showPage('fichar');
+  if(r!=='admin') initHoursFilter();
+
+  // First page per role
+  const firstPage = r==='admin' ? 'admin-team' : 'fichar';
+  showPage(firstPage);
 }
 
 function showPage(name){
@@ -710,6 +733,7 @@ function showPage(name){
     fichar:renderFichar, dashboard:renderDashboard,
     calendar:()=>{selRange=[];vacType='normal';renderCalendar();},
     hours:renderHoursTable, vacaciones:renderVacTab, config:renderConfig,
+    'admin-config': renderAdminConfig,
     'admin-team':async()=>{await loadAdminData();renderAdminTeam()},
     'admin-vac':async()=>{await loadAdminData();renderAdminVac()},
     'admin-pending':async()=>{await loadPendingUsers();renderAdminPending()},
@@ -873,6 +897,19 @@ function tplAdminPending(){return`<div class="page" id="admin-pending">
   <div class="page-title">Nuevos usuarios</div>
   <div class="page-sub">Técnicos registrados pendientes de activación</div>
   <div id="pending-list"><div class="empty-state"><div class="icon">⏳</div><p>Cargando…</p></div></div>
+</div>`}
+
+function tplAdminConfig(){return`<div class="page" id="admin-config">
+  <div class="page-title">Mi cuenta</div>
+  <div class="page-sub">Gestiona tu acceso</div>
+  <div class="section" style="max-width:480px">
+    <div class="section-title">🔑 Cambiar contraseña</div>
+    <div class="form-row"><label>Contraseña actual</label><input type="password" id="pw-current" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="form-row"><label>Nueva contraseña</label><input type="password" id="pw-new" placeholder="mínimo 4 caracteres" autocomplete="new-password"></div>
+    <div class="form-row"><label>Repetir nueva contraseña</label><input type="password" id="pw-confirm" placeholder="repite la contraseña" autocomplete="new-password"></div>
+    <div id="pw-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none"></div>
+    <button class="btn btn-primary" id="btn-save-pw" onclick="changePassword()">Cambiar contraseña</button>
+  </div>
 </div>`}
 
 function tplSuperUsers(){return`<div class="page" id="super-users">
@@ -1554,33 +1591,60 @@ async function importCSV(){
 }
 
 // ════════════════════════════════════════════════════════
-//  ADMIN: TEAM
+//  ADMIN: TEAM — only techs, not admins or supers
 // ════════════════════════════════════════════════════════
+function renderAdminConfig(){
+  // inputs already rendered in tplAdminConfig — nothing to populate dynamically
+}
+
 function renderAdminTeam(){
   const el=$('team-list');if(!el)return;
   const yr=+($('af-year')?.value||new Date().getFullYear());
-  const active=(cachedData.users||[]).filter(u=>u.status==='active');
-  if(!active.length){el.innerHTML=`<div class="empty-state"><p>Sin empleados activos</p></div>`;return}
-  el.innerHTML=active.map(u=>{
+  const techs=(cachedData.users||[]).filter(u=>u.role==='tech'&&u.status==='active');
+  if(!techs.length){el.innerHTML=`<div class="empty-state"><div class="icon">👥</div><p>No hay técnicos activos todavía</p></div>`;return}
+  el.innerHTML=techs.map(u=>{
     const allH=(cachedData.allHours||[]).filter(h=>h.uid===u.uid&&!h.is_open&&h.end_time&&new Date(h.date).getFullYear()===yr);
-    const cfg2=u.cfg||{vacDays:30,hPerVacDay:7,startH:'08:00',endH:'15:00'};
+    const viajes=allH.filter(h=>h.type==='travel').length;
     const eH=totalExtraH(u.uid);const eDays=totalExtraD(u.uid);
-    const vUsed=normalVacUsed(u.uid);const eUsed=extraVacUsed(u.uid);
-    const rCls={super:'b-orange',admin:'b-blue',tech:'b-gray'}[u.role]||'b-gray';
+    const vUsed=normalVacUsed(u.uid);const vTotal=normalVacTotal(u.uid);const eUsed=extraVacUsed(u.uid);
+    const pvPct=vTotal>0?Math.min(100,Math.round(vUsed/vTotal*100)):0;
+    const pePct=eDays>0?Math.min(100,Math.round(eUsed/eDays*100)):0;
     const initials=u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    return`<div class="emp-card">
-      <div class="emp-av">${initials}</div>
-      <div class="emp-info">
-        <div class="emp-name">${esc(u.name)} <span class="badge ${rCls}" style="margin-left:6px;font-size:9px">${u.role}</span></div>
-        <div class="emp-meta">@${esc(u.username)}</div>
-        <div class="emp-stats">
-          <span class="emp-stat">Jornadas: <strong>${allH.length}</strong></span>
-          <span class="emp-stat">Extra: <strong>${eH.toFixed(1)}h</strong></span>
-          <span class="emp-stat">Vac. anual: <strong>${vUsed}/${cfg2.vacDays}</strong></span>
-          <span class="emp-stat">Vac. extra: <strong>${eUsed}/${eDays}</strong></span>
+    return`<div class="emp-card" style="flex-direction:column;align-items:stretch;gap:12px;cursor:default">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="emp-av">${initials}</div>
+        <div class="emp-info">
+          <div class="emp-name">${esc(u.name)}</div>
+          <div class="emp-meta">@${esc(u.username)}</div>
+        </div>
+        <div class="emp-actions" style="margin-left:auto">
+          <button class="btn btn-sm" onclick="viewEmpDetail('${u.uid}')">Ver detalle</button>
         </div>
       </div>
-      <div class="emp-actions"><button class="btn btn-sm" onclick="viewEmpDetail('${u.uid}')">Ver detalle</button></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div style="background:var(--surface2);border-radius:var(--r);padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Jornadas ${yr}</div>
+          <div style="font-size:20px;font-weight:700;color:var(--txt)">${allH.length}</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:2px">${viajes} con viaje</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--r);padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Horas extra</div>
+          <div style="font-size:20px;font-weight:700;color:var(--blue)">${eH.toFixed(1)}<span style="font-size:11px;font-weight:400">h</span></div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:2px">${eDays} días generados</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--r);padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Vac. anuales</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green)">${vTotal-vUsed}<span style="font-size:11px;font-weight:400;color:var(--txt3)"> libres</span></div>
+          <div style="height:4px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:${pvPct}%;background:var(--green);border-radius:3px;transition:width .4s"></div></div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:3px">${vUsed} de ${vTotal} usados</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--r);padding:8px 10px;border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Vac. extra</div>
+          <div style="font-size:20px;font-weight:700;color:#7C3AED">${eDays-eUsed}<span style="font-size:11px;font-weight:400;color:var(--txt3)"> libres</span></div>
+          <div style="height:4px;background:var(--border);border-radius:3px;margin-top:6px;overflow:hidden"><div style="height:100%;width:${pePct}%;background:#7C3AED;border-radius:3px;transition:width .4s"></div></div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:3px">${eUsed} de ${eDays} usados</div>
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1619,7 +1683,7 @@ function viewEmpDetail(uid_){
 function exportCSV(){
   const yr=+($('af-year')?.value||new Date().getFullYear());
   let csv='Nombre,Usuario,Fecha,Tipo,Entrada,Salida,Horas,HorasExtra,Destino,SalidaCasa,LlegadaCasa,Km,Dietas,Notas\n';
-  (cachedData.users||[]).filter(u=>u.status==='active').forEach(u=>{
+  (cachedData.users||[]).filter(u=>u.role==='tech'&&u.status==='active').forEach(u=>{
     const cfg2=u.cfg||{startH:'08:00',endH:'15:00'};
     (cachedData.allHours||[]).filter(h=>h.uid===u.uid&&!h.is_open&&h.end_time&&new Date(h.date).getFullYear()===yr).forEach(h=>{
       const s=h.start_time?.substring(0,5),e=h.end_time?.substring(0,5);
