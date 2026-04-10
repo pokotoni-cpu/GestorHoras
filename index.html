@@ -148,28 +148,59 @@ textarea{resize:vertical}
 .cbtn-travel{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255,255,255,.24)}.cbtn-travel:hover{background:rgba(255,255,255,.19)}
 
 /* ── CALENDAR ── */
-.cal-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.cal-nb{background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--txt);font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .1s;line-height:1}
-.cal-nb:hover{background:var(--surface3)}
-.cal-title-txt{font-size:16px;font-weight:600;flex:1;text-align:center}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cal-head{text-align:center;font-size:10px;font-weight:700;color:var(--txt3);padding:6px 0;text-transform:uppercase;letter-spacing:.06em}
-.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:all .12s;color:var(--txt);position:relative;gap:2px;user-select:none}
-.cal-day:hover:not(.empty){background:var(--surface2);border-color:var(--border)}
-.cal-day.empty{cursor:default}.cal-day.we{color:var(--txt3)}
-.cal-day.vn{background:#C8EDD8;color:#1A5C35;border-color:#6DB98A;font-weight:700}
-.cal-day.ve{background:#C2D9F7;color:#0D3570;border-color:#5A9BE0;font-weight:700}
-.cal-day.vp{background:#FAD97A;color:#6B3E00;border-color:#E0A820;font-weight:700}
-.cal-day.today{border-color:var(--accent)!important;border-width:2px;font-weight:700}
-.cal-day.sel{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border);font-weight:600}
-.cal-day.hh{background:var(--surface2);border-color:var(--border)}
-.cal-day.ht{background:var(--amber-bg);border-color:var(--amber-border)}
-.dot-ind{width:5px;height:5px;border-radius:50%;background:var(--border2);flex-shrink:0}
-.cal-day.hex .dot-ind{background:var(--blue)}
-.cal-day.vn .dot-ind,.cal-day.ve .dot-ind,.cal-day.vp .dot-ind{display:none}
+.cal-nav{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cal-nb{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  width:34px;height:34px;cursor:pointer;color:var(--txt);font-size:20px;
+  display:flex;align-items:center;justify-content:center;transition:all .1s;line-height:1;
+  flex-shrink:0;
+}
+.cal-nb:hover{background:var(--surface3);border-color:var(--border2)}
+.cal-title-txt{font-size:17px;font-weight:700;flex:1;text-align:center;letter-spacing:-.3px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-head{
+  text-align:center;font-size:11px;font-weight:700;color:var(--txt2);
+  padding:8px 2px 6px;text-transform:uppercase;letter-spacing:.05em;
+}
+.cal-day{
+  aspect-ratio:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:14px;font-weight:500;
+  border-radius:10px;cursor:pointer;
+  border:1.5px solid transparent;
+  transition:all .12s;
+  color:#3A3835;
+  background:#F0EDE8;
+  position:relative;gap:3px;user-select:none;
+  min-height:40px;
+}
+.cal-day:hover:not(.empty):not(.we-blocked){
+  background:#E2DDD6;border-color:var(--border2);
+  transform:scale(1.05);z-index:1;
+}
+.cal-day.empty{background:transparent;cursor:default}
+.cal-day.we{color:#9E9B96;background:#EAE7E2}
+.cal-day.we-blocked{color:#C8C5BF!important;background:#EAE7E2!important;cursor:not-allowed!important;opacity:.5}
+/* vacation states — rich solid colors */
+.cal-day.vn{background:#4CAF50;color:#fff;border-color:#388E3C;font-weight:700;box-shadow:0 2px 6px rgba(76,175,80,.35)}
+.cal-day.ve{background:#2196F3;color:#fff;border-color:#1565C0;font-weight:700;box-shadow:0 2px 6px rgba(33,150,243,.35)}
+.cal-day.vp{background:#FFC107;color:#5D3B00;border-color:#F9A825;font-weight:700;box-shadow:0 2px 6px rgba(255,193,7,.35)}
+.cal-day.sel{background:#7C3AED;color:#fff;border-color:#5B21B6;font-weight:700;box-shadow:0 2px 6px rgba(124,58,237,.35)}
+.cal-day.hh{background:#E8E4DC;border-color:#D4CFC6;color:#3A3835}
+.cal-day.ht{background:#FFE0B2;border-color:#FFB74D;color:#7B3F00}
+/* today ring */
+.cal-day.today{border-color:#1A1917!important;border-width:2px;font-weight:800}
+.cal-day.today:not(.vn):not(.ve):not(.vp):not(.sel){background:#1A1917;color:#fff}
+/* dot indicator for hours */
+.dot-ind{width:5px;height:5px;border-radius:50%;background:rgba(0,0,0,.25);flex-shrink:0}
+.cal-day.vn .dot-ind,.cal-day.ve .dot-ind,.cal-day.vp .dot-ind,
+.cal-day.sel .dot-ind,.cal-day.today .dot-ind{display:none}
+.cal-day.hex .dot-ind{background:#1565C0}
+.cal-day.hh .dot-ind,.cal-day.ht .dot-ind{display:block}
+
 .legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)}
-.leg-sq{width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.1)}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2);font-weight:500}
+.leg-sq{width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.12)}
 
 /* ── EMP CARDS ── */
 .emp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.1rem 1.25rem;display:flex;align-items:center;gap:14px;margin-bottom:10px;box-shadow:var(--sh);transition:all .15s}
@@ -739,13 +770,17 @@ function tplCalendar(){return`<div class="page" id="calendar">
       <button class="cal-nb" onclick="nextMonth()">&#8250;</button>
     </div>
     <div class="legend">
-      <span class="leg-item"><span class="leg-sq" style="background:#C8EDD8;border-color:#6DB98A"></span>Vac. anuales</span>
-      <span class="leg-item"><span class="leg-sq" style="background:#C2D9F7;border-color:#5A9BE0"></span>Vac. horas extra</span>
-      <span class="leg-item"><span class="leg-sq" style="background:#FAD97A;border-color:#E0A820"></span>Pendiente aprobación</span>
-      <span class="leg-item"><span class="leg-sq" style="background:var(--surface2);border-color:var(--border)"></span>Jornada registrada</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#4CAF50;border-color:#388E3C"></span>Vac. anuales</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#2196F3;border-color:#1565C0"></span>Vac. horas extra</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#FFC107;border-color:#F9A825"></span>Pendiente aprobación</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#E8E4DC;border-color:#D4CFC6"></span>Jornada registrada</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#FFE0B2;border-color:#FFB74D"></span>Jornada con viaje</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#1A1917;border-color:#1A1917"></span>Hoy</span>
     </div>
+    <div style="max-width:560px;margin:0 auto">
     <div class="cal-grid" id="cal-heads"></div>
-    <div class="cal-grid" id="cal-days" style="margin-top:4px"></div>
+    <div class="cal-grid" id="cal-days" style="margin-top:3px"></div>
+    </div>
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="cal-acts"></div>
   </div>
   <div class="section"><div class="section-title">Días marcados este mes</div><div id="cal-month-list"></div></div>
